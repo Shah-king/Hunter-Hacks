@@ -1,208 +1,267 @@
-## Project Overview
+# TrustLayer — Plan
 
-**TrustFund** is a digital app for ROSCAs (rotating savings and credit associations) — informal savings circles that immigrant communities have used for generations. They go by many names:
-
-- **Susu** in West African communities
-- **Tanda** in Latin American communities
-- **Hui** in Chinese communities
-- **Kye** in Korean communities
-
-**Core behavior:** A small trusted group (5-10 people) contributes a fixed amount monthly into a shared pot. One member receives the full pot each cycle. The rotation continues until every member has received once.
-
-**Why it matters:** There are 4 million immigrants in NYC, most with no credit history. They already run these savings circles on WhatsApp group chats and Google Sheets. TrustFund digitizes existing trusted behavior — we are not inventing new behavior.
-
-**Tracks targeted:**
-- Manhattan Finance
-- Queens Immigrant Support
-- Multilingual Tools
-
-**Tagline:** "Immigrants built their own banking system decades ago. We just built the app for it."
+**One-liner:** Real-time scam and fraud protection for immigrants and international students.
 
 ---
 
-## How It Works (User Flow)
+## 1. Problem
 
-### 1. Circle Creation
-The host opens VisaWallet and creates a new circle. They set:
-- Contribution amount (e.g., $200/month)
-- Cycle length (e.g., monthly)
-- Member count (e.g., 6 people)
-- Payout order (host assigns or members pick slots)
-
-**On screen:** A form with these fields, a preview card showing "6 members x $200/month = $1,200 pot per cycle", and a "Create Circle" button.
-
-### 2. Member Invitation and Onboarding
-The host sends SMS invites to each member via Twilio. Each person receives a link.
-
-**On screen (invitee):** A landing page showing the circle name, contribution amount, cycle schedule, and payout order. The member taps "Accept & Join", agrees to terms, and confirms their payment method (Stripe test mode).
-
-### 3. Monthly Contribution
-On the due date, each member pays their fixed amount into the shared pot. Twilio sends SMS reminders 3 days before and on the day.
-
-**On screen:** A contribution page showing "Your payment of $200 is due April 25". A "Pay Now" button triggers the Stripe test charge. The shared ledger updates in realtime showing who has paid and who hasn't.
-
-### 4. Payout Day
-Once all members have contributed for the cycle, the designated member receives the full pot.
-
-**On screen:** A payout confirmation screen showing "$1,200 sent to María (Month 3 recipient)". The schedule advances to show the next recipient. The ledger updates with a green checkmark for the completed payout.
-
-### 5. Cycle Completion
-After every member has received the pot once, the circle is complete. The host can close the circle or restart a new cycle.
-
-**On screen:** A completion summary showing all payouts made, total money moved, and a "Start New Cycle" or "Close Circle" button.
+- **47% of immigrants** report being targeted by scams in their first 2 years in the US
+- Scammers exploit language barriers, unfamiliarity with US systems, and fear of authorities
+- Common attacks: fake IRS calls, rental scams, job offer fraud, phishing texts, social security threats
+- Victims lose **$500-$5,000+ per incident** — money they cannot afford to lose
+- **Why current solutions fail:**
+  - Spam filters catch obvious junk, not sophisticated social engineering
+  - FTC complaint forms are in English, buried, and slow
+  - No tool explains *why* something is a scam or *what to do next* in the victim's language
+  - Immigrants often don't report because they fear deportation consequences
 
 ---
 
-## Core Features
+## 2. Solution
 
-These are the 5 features we are building during the hackathon:
+TrustLayer lets anyone paste a suspicious message (text, email, DM) and instantly get a clear verdict: **Scam, Suspicious, or Safe** — with a plain-language explanation and specific action steps, all in their native language.
 
-- [ ] **Create a circle** — Host sets contribution amount, cycle length, member count, and payout order
-- [ ] **Invite and onboard members** — SMS invite link, accept terms, confirm payment method
-- [ ] **Shared ledger view** — Realtime transparency into who paid, who hasn't, and payout history (transparency is the trust mechanism)
-- [ ] **Automated SMS reminders** — Twilio sends reminders 3 days before and on the due date
-- [ ] **Payout simulation** — Stripe test mode simulates the full payout flow with no real money
-
----
-
-## Out of Scope
-
-What we are NOT building:
-
-- No real banking integration — all payments are Stripe test mode
-- No KYC or identity verification
-- No credit reporting
-- No native mobile app — PWA only
-- No blockchain
-- No social feed, profile photos, dark mode, or settings page
+**Key differentiators:**
+- **Multilingual by default** — explains threats in Spanish, Mandarin, Bengali, Haitian Creole, etc.
+- **Explanation + action** — doesn't just flag danger, tells you exactly what to do
+- **Zero setup** — paste and click, no account needed
 
 ---
 
-## Claude AI Layer
+## 3. MVP Scope (Strict)
 
-### Multilingual Onboarding Agent
+We build ONLY this:
 
-Claude powers a conversational onboarding flow that speaks Spanish, Mandarin, Bengali, and Haitian Creole. The user describes their situation in their own language, and Claude explains the circle setup back in that language.
+- [ ] Text input box (paste any suspicious message)
+- [ ] "Analyze" button
+- [ ] Output panel showing:
+  - **Risk level:** Scam / Suspicious / Safe (color-coded)
+  - **Explanation:** Why this is/isn't a scam (2-3 sentences, plain language)
+  - **Action steps:** What to do right now (1-3 bullet points)
+- [ ] Language selector for output translation
 
-**Example 1 — Spanish:**
-> **User:** "Hola, quiero hacer una tanda con mis compañeras de trabajo. Somos 6 y queremos poner $200 cada mes."
->
-> **Claude:** "¡Perfecto! Voy a crear un círculo para 6 personas con una contribución de $200 al mes. Eso significa que cada mes, una persona recibirá $1,200. El ciclo completo durará 6 meses. ¿Quieres elegir el orden de pago ahora o dejar que tus compañeras elijan sus turnos?"
-
-**Example 2 — Mandarin:**
-> **User:** "我想和几个朋友一起做会，每人每月存300美元，一共8个人。"
->
-> **Claude:** "好的！我来帮你建立一个互助会：8个人，每人每月存$300，每个月有一个人拿到$2,400的总额。整个周期需要8个月。你想现在决定领钱的顺序，还是让大家自己选？"
-
-**Example 3 — Haitian Creole:**
-> **User:** "Mwen vle fè yon sol ak fanmi mwen. Nou se 5 moun, chak moun ap mete $150 chak mwa."
->
-> **Claude:** "Dakò! M ap kreye yon sèk pou 5 moun ak $150 chak mwa. Sa vle di chak mwa, yon moun ap resevwa $750. Sèk la ap dire 5 mwa. Èske ou vle deside ki lòd moun yo ap resevwa lajan an kounye a?"
-
-### In-Circle Dispute Mediator
-
-When a member claims "I already paid" or disputes a ledger entry, Claude pulls the actual contribution record from Supabase and resolves the dispute in the relevant language.
-
-**Example 1 — Spanish/English dispute:**
-> **User (María):** "Ya pagué este mes, no sé por qué dice que no."
->
-> **Claude:** "María, revisé el registro del círculo 'China Lee Coworkers'. Tu pago de $200 para el mes de abril fue recibido el 3 de abril a las 2:15 PM. El sistema lo muestra como confirmado ✅. Parece que hubo un retraso en la actualización de la pantalla. Tu pago está registrado correctamente."
->
-> **Claude (to the group in English):** "Update: María's April payment of $200 was confirmed on April 3 at 2:15 PM. The ledger has been refreshed and shows her payment as complete."
-
-**Example 2 — Mandarin dispute:**
-> **User (Wei):** "我上周已经付了，为什么还显示未付？"
->
-> **Claude:** "Wei，我查了一下记录。你的$300付款在4月10日下午3:30收到，状态是已确认 ✅。账本现在已经更新了。如果你还看到'未付'，请刷新页面。"
-
-**Example 3 — Bengali missed payment:**
-> **User (Rina):** "আমি তো টাকা দিয়েছিলাম, কেন দেখাচ্ছে দেইনি?"
->
-> **Claude:** "Rina, আমি রেকর্ড চেক করেছি। আপনার এপ্রিল মাসের $150 পেমেন্ট এখনও পাওয়া যায়নি। শেষ সফল পেমেন্ট ছিল মার্চ 15 তারিখে। আপনি কি আবার চেষ্টা করতে চান? আমি আপনাকে পেমেন্ট লিংক পাঠাচ্ছি।"
+**NOT building:** browser extension, email integration, call detection, user accounts, history, reporting dashboard.
 
 ---
 
-## Tech Stack
+## 4. Core Features (3 Only)
 
-- **Next.js 14** (App Router) + **TypeScript** + **Tailwind CSS**
-- **Supabase** (auth + Postgres + realtime subscriptions)
-- **Anthropic Claude API** (claude-sonnet-4-5) for multilingual onboarding and dispute resolution
-- **Twilio** for SMS invitations and payment reminders
-- **Stripe in TEST MODE only** for payout simulation
-- **Deployed to Vercel** as a PWA
+### Feature 1: Scam Detection
+- **What:** Analyzes pasted text and classifies risk level
+- **Input:** Raw message text -> **Output:** Scam / Suspicious / Safe with confidence indicator
+- **Why it matters:** Gives an instant second opinion when something feels wrong
 
----
+### Feature 2: Multilingual Explanation
+- **What:** Explains the verdict in the user's preferred language
+- **Input:** Detection result + selected language -> **Output:** Clear explanation in that language
+- **Why it matters:** English-only warnings fail the people most at risk
 
-## 24-Hour Timeline
-
-### Saturday 8 AM - 12 PM: Setup + Scaffolding
-
-- [ ] Initialize Next.js 14 repo with TypeScript and Tailwind
-- [ ] Create Supabase project, connect to app
-- [ ] Set up Vercel deployment with preview URLs
-- [ ] Design and migrate database schema (circles, members, contributions, payouts)
-- [ ] Implement Supabase auth (email/phone sign-up and login)
-- [ ] Verify auth flow works end-to-end on deployed preview
-- [ ] Set up environment variables for Supabase, Stripe, Twilio, Claude API
-
-### Saturday 12 PM - 4 PM: Core Flows
-
-- [ ] Build "Create Circle" form (contribution amount, cycle length, member count, payout order)
-- [ ] Build circle dashboard page showing circle details and member list
-- [ ] Implement invite flow — generate SMS invite links, store pending invitations
-- [ ] Build member onboarding page (accept terms, confirm payment method via Stripe test)
-- [ ] Build shared ledger view with realtime updates via Supabase subscriptions
-- [ ] Display contribution status per member (paid / pending / overdue)
-
-### Saturday 4 PM - 8 PM: Claude Integration + Twilio SMS
-
-- [ ] Integrate Anthropic Claude API (claude-sonnet-4-5)
-- [ ] Build multilingual onboarding chat agent — user describes their circle in their language, Claude responds in that language and creates the circle
-- [ ] Build dispute mediator agent — Claude queries Supabase for contribution records and resolves disputes in the member's language
-- [ ] Set up Twilio SMS — send invite links to phone numbers
-- [ ] Implement automated SMS reminders (3 days before due date + day of)
-- [ ] Test both Claude agents with Spanish, Mandarin, Bengali, and Haitian Creole inputs
-
-### Saturday 8 PM - 12 AM: Polish UI + Demo Data
-
-- [ ] Polish all pages with Tailwind — clean layout, mobile-responsive, consistent design
-- [ ] Seed demo circle: "China Lee Coworkers" with 5 members and 3 months of fake contribution/payout history
-- [ ] Add loading states, error states, and empty states
-- [ ] Build PWA manifest and service worker for installability
-- [ ] Test full flow on mobile browser
-
-### Sunday 12 AM - 4 AM: Bug Fixes + Edge Cases
-
-- [ ] Run through entire user flow end-to-end 3 times, fix bugs found
-- [ ] Handle edge cases: double payment attempts, member leaving mid-cycle, late payments
-- [ ] Test Claude agents with edge case inputs (mixed languages, ambiguous requests)
-- [ ] Fix any realtime sync issues in the ledger view
-- [ ] Test SMS delivery and reminder timing
-
-### Sunday 4 AM - 8 AM: Pitch + Submission
-
-- [ ] Build pitch deck (6-8 slides: problem, solution, demo screenshots, market, team, tech)
-- [ ] Write Devpost submission (description, inspiration, what it does, how we built it, challenges, accomplishments, what's next)
-- [ ] Rehearse 4-minute demo 3 times with the team
-- [ ] Record backup demo video in case of live demo issues
-- [ ] Final deploy to production Vercel URL
-- [ ] Submit to Devpost by 8:00 AM
+### Feature 3: Action Guidance
+- **What:** Tells the user exactly what to do next
+- **Input:** Scam type detected -> **Output:** Specific steps (block number, report to FTC, do NOT send money, etc.)
+- **Why it matters:** Knowing it's a scam isn't enough — people freeze without clear next steps
 
 ---
 
-## Demo Script (4 Minutes)
+## 5. User Flow (Demo-Focused)
 
-### 0:00 - 0:30: The Problem
-Open on a real screenshot of a Google Sheets susu tracker and a WhatsApp group chat full of payment confirmations. State: "4 million immigrants in NYC run savings circles on spreadsheets and group chats. They built their own banking system decades ago — it works, but it doesn't scale. One typo in the spreadsheet and trust breaks down."
+1. User opens TrustLayer (no login required)
+2. Pastes suspicious message into text box
+3. Selects their preferred language (default: English)
+4. Clicks **"Analyze"**
+5. Loading spinner (1-3 seconds)
+6. Results appear:
+   - Red/yellow/green badge with risk level
+   - 2-3 sentence explanation of why
+   - Numbered action steps
+7. User can switch language — explanation and actions re-render in new language
 
-### 0:30 - 1:30: Circle Creation with Claude
-Switch to VisaWallet. María opens the app and types in Spanish: "Quiero hacer una tanda con mis compañeras, somos 6, $200 cada mes." Claude responds in Spanish, confirms the details, and creates the circle. María taps to send SMS invites. Show a member receiving the text, tapping the link, and joining the circle in under 30 seconds.
+---
 
-### 1:30 - 2:30: Month 3 — Dispute Resolution
-Fast-forward to month 3 of the demo circle. The ledger shows 3 months of contribution history. A member messages: "Ya pagué, no sé por qué dice que no." Claude pulls the contribution record, confirms the payment was received on April 3 at 2:15 PM, and posts the resolution to the group in both Spanish and English. The ledger updates in realtime.
+## 6. Tech Stack
 
-### 2:30 - 3:15: Payout Day
-It's payout day. The pot is $1,200. María is the month 3 recipient. Show the payout confirmation screen. The ledger updates with a green checkmark. The schedule advances to show the next recipient. All members see the update in realtime.
+| Layer | Choice | Why |
+|-------|--------|-----|
+| Frontend | **Next.js 14 + Tailwind CSS** | Fast to build, easy to deploy |
+| Backend | **Next.js API Routes** | No separate server needed |
+| AI | **Claude API (claude-sonnet-4-5)** | Best multilingual reasoning, handles nuance |
+| Deployment | **Vercel** | One-click deploy, free tier |
 
-### 3:15 - 4:00: Close
-Return to the tagline slide: "Immigrants built their own banking system decades ago. We just built the app for it." State the market: 4 million immigrants in NYC alone, ROSCAs exist in 80+ countries. VisaWallet doesn't ask anyone to change their behavior — it just makes the behavior they already trust more transparent, more reliable, and more accessible. Close.
+No database. No auth. No external translation API needed — Claude handles translation natively.
+
+---
+
+## 7. Detection Logic
+
+Claude receives a structured prompt with the suspicious message and is asked to:
+
+1. **Identify scam signals:** urgency language ("act now", "your account will be closed"), authority impersonation (IRS, SSA, ICE), requests for payment (gift cards, wire transfer, crypto), suspicious links, too-good-to-be-true offers
+2. **Classify risk:** Based on signal density and severity
+   - **Scam** = 2+ strong signals, clear malicious intent
+   - **Suspicious** = 1 signal or ambiguous intent
+   - **Safe** = no signals detected
+3. **Generate explanation:** In the selected language, referencing the specific signals found
+4. **Generate action steps:** Based on scam type (phishing -> don't click links, report; IRS scam -> IRS never calls, hang up; rental -> never pay before seeing unit)
+
+The prompt includes common scam patterns targeting immigrants specifically (ICE threats, visa scams, fake job offers requiring upfront payment).
+
+---
+
+## 8. Execution Plan
+
+### Phase 1: Setup (0-2 hours)
+- [ ] Initialize Next.js 14 repo with TypeScript + Tailwind
+- [ ] Deploy skeleton to Vercel
+- [ ] Set up Claude API key in environment variables
+- [ ] Create basic page layout (header, input area, results area)
+- [ ] Agree on component structure and API route shape
+
+### Phase 2: Core Build (2-8 hours)
+- [ ] Build input component (textarea + analyze button)
+- [ ] Build API route `/api/analyze` that accepts message text + language
+- [ ] Write Claude system prompt for scam detection
+- [ ] Parse Claude's structured response (risk level, explanation, actions)
+- [ ] Build results component (risk badge, explanation text, action list)
+- [ ] Connect frontend to API, display results
+- [ ] Test with 5+ real scam examples
+
+### Phase 3: Intelligence Layer (8-14 hours)
+- [ ] Refine Claude prompt with immigrant-specific scam patterns
+- [ ] Add language selector (English, Spanish, Mandarin, Bengali, Haitian Creole)
+- [ ] Ensure explanation + actions render in selected language
+- [ ] Add scam type label (IRS, phishing, rental, job, romance, etc.)
+- [ ] Add "common signs" section highlighting specific red flags found in the message
+- [ ] Test with messages in multiple languages as INPUT (not just output)
+
+### Phase 4: Polish (14-20 hours)
+- [ ] Color-coded risk badges (red/yellow/green)
+- [ ] Loading animation during analysis
+- [ ] Mobile-responsive layout
+- [ ] Add 3 pre-loaded example scam messages users can click to try
+- [ ] Error handling (empty input, API failure)
+- [ ] Final UI pass — clean typography, spacing, contrast
+
+### Phase 5: Pitch + Demo (Final hours)
+- [ ] Build pitch deck (max 7 slides)
+- [ ] Write demo script
+- [ ] Practice demo 3 times
+- [ ] Record backup video
+- [ ] Submit to Devpost
+
+---
+
+## 9. Task Checklist
+
+- [ ] `npx create-next-app` with TypeScript + Tailwind
+- [ ] Create `/app/page.tsx` — main UI with input + results
+- [ ] Create `/app/api/analyze/route.ts` — POST endpoint
+- [ ] Write `systemPrompt.ts` — Claude scam detection prompt
+- [ ] Build `<RiskBadge />` component (Scam/Suspicious/Safe)
+- [ ] Build `<Explanation />` component
+- [ ] Build `<ActionSteps />` component
+- [ ] Build `<LanguageSelector />` component
+- [ ] Build `<ExampleMessages />` component (pre-loaded scam examples)
+- [ ] Add Anthropic SDK (`@anthropic-ai/sdk`)
+- [ ] Test: fake IRS message -> should return Scam
+- [ ] Test: normal message from friend -> should return Safe
+- [ ] Test: ambiguous job offer -> should return Suspicious
+- [ ] Test: output in Spanish, Mandarin, Bengali
+- [ ] Deploy final version to Vercel
+- [ ] Prepare pitch deck
+- [ ] Rehearse demo
+
+---
+
+## 10. Team Roles
+
+### AI / Logic (1 person)
+- Write and iterate on Claude system prompt
+- Handle API route and response parsing
+- Test detection accuracy across scam types
+- **Deliverable:** `/api/analyze` returns correct, structured results for all test cases
+
+### Frontend (1 person)
+- Build all UI components
+- Handle state management (input -> loading -> results)
+- Mobile responsiveness
+- **Deliverable:** Clean, working UI that displays results clearly
+
+### Backend + Integration (1 person)
+- Set up Next.js project and deployment
+- Connect frontend to API
+- Environment variables, error handling, edge cases
+- **Deliverable:** End-to-end flow works on deployed Vercel URL
+
+### Presentation (1 person, shared role)
+- Build pitch deck
+- Write demo script
+- Coordinate practice runs
+- **Deliverable:** Polished 3-minute demo ready to present
+
+---
+
+## 11. Demo Script (3 Minutes)
+
+### 0:00 - 0:30: The Hook
+> "Last year, immigrants in the US lost over $2 billion to scams. Not because they're careless — because scammers specifically target people who don't know the system yet, don't speak English fluently, and are afraid to ask for help."
+
+### 0:30 - 1:00: Show the Problem
+Paste this real-world scam message:
+> "URGENT: This is the IRS. Your Social Security number has been suspended due to suspicious activity. You must call 1-800-XXX-XXXX immediately or a warrant will be issued for your arrest. Press 1 to speak with an agent."
+
+### 1:00 - 1:45: The Analysis
+Click "Analyze." Results appear:
+- **Risk: SCAM** (red badge)
+- **Type: Government Impersonation**
+- **Explanation:** "This is a scam. The IRS never contacts people by text message, never threatens arrest, and never asks you to call a phone number to avoid a warrant. Your Social Security number cannot be 'suspended.' This is a common scam targeting immigrants."
+- **Actions:** (1) Do not call this number. (2) Block the sender. (3) Report to FTC at reportfraud.ftc.gov.
+
+### 1:45 - 2:15: Multilingual
+Switch language to Spanish. Same results now display:
+> "Esto es una estafa. El IRS nunca contacta a las personas por mensaje de texto, nunca amenaza con arresto..."
+
+Switch to Mandarin. Results re-render in Chinese.
+> "这是一个骗局。IRS从不通过短信联系人..."
+
+### 2:15 - 3:00: Close
+> "TrustLayer is one paste away from protecting the people who need it most. No account, no download, no English required. We're building the safety net that should already exist."
+
+---
+
+## 12. Winning Strategy
+
+**Why judges will pick TrustLayer:**
+
+1. **Real, urgent problem** — immigrant scam targeting is documented, growing, and underserved
+2. **Clear user** — not abstract; we can name exactly who this helps and show the pain
+3. **Working demo** — paste a message, get a result. Simple, tangible, impressive
+4. **Emotional impact** — multilingual output hits hard in a live demo. Switching to Spanish or Mandarin makes the room feel the problem
+5. **Technical substance** — smart use of LLM for classification + explanation + translation in one call
+6. **Feasible beyond hackathon** — browser extension, SMS integration, and community reporting are obvious next steps
+
+**In the presentation, emphasize:**
+- The HUMAN story (use a real scam example, mention real dollar losses)
+- The multilingual moment (switch languages live — this is the "wow" moment)
+- Simplicity (no login, no setup, just paste and know)
+
+---
+
+## 13. Risks
+
+| Risk | Mitigation |
+|------|-----------|
+| Claude misclassifies a message | Add disclaimer: "This is a tool to help you evaluate — when in doubt, don't send money" |
+| API latency makes demo slow | Pre-warm the API before demo; have backup screenshots |
+| Scope creep | MVP is ONE page. If it's not paste -> analyze -> result, it's out of scope |
+| Time runs out | Core build (Phase 2) is the minimum viable demo. Everything after is polish |
+
+---
+
+## 14. Future Vision
+
+- **Browser extension** — auto-scans emails and flags suspicious messages inline
+- **SMS integration** — forward a suspicious text to TrustLayer's number, get a reply
+- **Real-time call detection** — listen to live calls and alert if scam patterns detected
+- **Community reporting** — users flag new scam patterns, improving detection for everyone
+- **Partnership with immigrant orgs** — distribute through community centers, legal aid, ESL programs
