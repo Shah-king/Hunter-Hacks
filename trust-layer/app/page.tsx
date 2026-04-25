@@ -6,6 +6,7 @@ import {
   Activity,
   AlertTriangle,
   CheckCircle2,
+  Copy,
   Heart,
   Loader2,
   MessageCircle,
@@ -38,21 +39,28 @@ const ACTIVITY = [
 const SAMPLE_MESSAGE =
   "Final notice: your tax case will be sent to federal court unless you pay today with gift cards."
 
-const DEMO_FORWARDING_ADDRESS = "demo@parse.trustlayer.store"
+const FORWARDING_ADDRESS = "demo@parse.trustlayer.store"
 
 function ProtectionStatus() {
+  const [copied, setCopied] = useState(false)
   const rows = [
     ["Email connected", "Ready", CheckCircle2, "text-emerald-600 bg-emerald-50"],
     ["Monitoring active", "Live", ShieldCheck, "text-sky-600 bg-sky-50"],
     ["1 suspicious message today", "Watch", AlertTriangle, "text-amber-700 bg-amber-50"],
   ] as const
 
+  async function copyForwardingAddress() {
+    await navigator.clipboard.writeText(FORWARDING_ADDRESS)
+    setCopied(true)
+    window.setTimeout(() => setCopied(false), 1600)
+  }
+
   return (
     <section className="soft-card rounded-[28px] p-5">
       <div className="flex items-center justify-between gap-4">
         <div>
           <h2 className="text-lg font-black text-slate-950">Protection Status</h2>
-          <p className="mt-1 text-sm text-slate-500">Mock demo mode, no account required.</p>
+          <p className="mt-1 text-sm text-slate-500">Forwarding is active and monitoring incoming scam reports.</p>
         </div>
         <div className="rounded-2xl bg-sky-50 p-3 text-sky-500">
           <ShieldCheck className="h-5 w-5" />
@@ -74,13 +82,19 @@ function ProtectionStatus() {
       <div className="mt-5 rounded-3xl border border-sky-100 bg-gradient-to-br from-sky-50 to-white p-4">
         <p className="text-xs font-black uppercase tracking-[0.14em] text-sky-500">Forwarding address</p>
         <div className="mt-3 flex flex-col gap-3 rounded-2xl bg-white p-3 shadow-sm sm:flex-row sm:items-center sm:justify-between">
-          <code className="break-all text-sm font-black text-slate-800">{DEMO_FORWARDING_ADDRESS}</code>
-          <Link href="/signup" className="shrink-0 rounded-full bg-slate-950 px-4 py-2 text-xs font-black text-white transition hover:-translate-y-0.5">
-            Setup forwarding
-          </Link>
+          <code className="break-all text-sm font-black text-slate-800">{FORWARDING_ADDRESS}</code>
+          <button
+            type="button"
+            onClick={copyForwardingAddress}
+            className="inline-flex shrink-0 items-center justify-center gap-2 rounded-full bg-slate-950 px-4 py-2 text-xs font-black text-white transition hover:-translate-y-0.5"
+            aria-label="Copy forwarding address"
+          >
+            {copied ? <CheckCircle2 className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+            {copied ? "Copied" : "Copy"}
+          </button>
         </div>
         <p className="mt-3 text-xs leading-5 text-slate-500">
-          Forward suspicious emails here during the demo and TrustLayer shows the analysis in the dashboard flow.
+          Forward suspicious emails here and TrustLayer will surface the analysis in the dashboard flow.
         </p>
       </div>
     </section>
@@ -242,7 +256,7 @@ export default function Home() {
           <div className="mt-6 flex flex-wrap gap-3 text-sm font-semibold text-slate-600">
             <span className="rounded-full bg-white px-4 py-2 shadow-sm">multilingual support</span>
             <span className="rounded-full bg-white px-4 py-2 shadow-sm">community alerts</span>
-            <span className="rounded-full bg-white px-4 py-2 shadow-sm">no login needed</span>
+            <span className="rounded-full bg-white px-4 py-2 shadow-sm">forwarding active</span>
           </div>
         </div>
         <ProtectionStatus />
