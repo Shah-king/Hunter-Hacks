@@ -38,6 +38,8 @@ const ACTIVITY = [
 const SAMPLE_MESSAGE =
   "Final notice: your tax case will be sent to federal court unless you pay today with gift cards."
 
+const DEMO_FORWARDING_ADDRESS = "demo@parse.trustlayer.store"
+
 function ProtectionStatus() {
   const rows = [
     ["Email connected", "Ready", CheckCircle2, "text-emerald-600 bg-emerald-50"],
@@ -68,6 +70,18 @@ function ProtectionStatus() {
             <span className="text-xs font-black text-slate-400">{value}</span>
           </div>
         ))}
+      </div>
+      <div className="mt-5 rounded-3xl border border-sky-100 bg-gradient-to-br from-sky-50 to-white p-4">
+        <p className="text-xs font-black uppercase tracking-[0.14em] text-sky-500">Forwarding address</p>
+        <div className="mt-3 flex flex-col gap-3 rounded-2xl bg-white p-3 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+          <code className="break-all text-sm font-black text-slate-800">{DEMO_FORWARDING_ADDRESS}</code>
+          <Link href="/signup" className="shrink-0 rounded-full bg-slate-950 px-4 py-2 text-xs font-black text-white transition hover:-translate-y-0.5">
+            Setup forwarding
+          </Link>
+        </div>
+        <p className="mt-3 text-xs leading-5 text-slate-500">
+          Forward suspicious emails here during the demo and TrustLayer shows the analysis in the dashboard flow.
+        </p>
       </div>
     </section>
   )
