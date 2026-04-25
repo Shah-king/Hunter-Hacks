@@ -42,57 +42,61 @@ export default function SignupPage() {
   return (
     <main className="mx-auto grid min-h-[calc(100vh-72px)] w-full max-w-6xl items-center gap-8 px-4 py-8 sm:px-6 lg:grid-cols-[0.95fr_1.05fr] lg:px-8">
       <section className="space-y-6">
-        <div className="inline-flex items-center gap-2 rounded-full border border-cyan-300/20 bg-cyan-300/10 px-3 py-1 text-xs font-medium text-cyan-100">
+        <div className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 text-xs font-black text-sky-600 shadow-sm ring-1 ring-sky-100">
           <ShieldCheck className="h-3.5 w-3.5" />
-          Guided setup
+          friendly setup
         </div>
         <div>
-          <h1 className="text-4xl font-semibold tracking-tight text-white sm:text-5xl">Connect your inbox in minutes.</h1>
-          <p className="mt-4 max-w-xl text-sm leading-6 text-slate-400 sm:text-base">
-            TrustLayer gives every user a forwarding address. Forward suspicious mail there and the dashboard will score, explain, and alert in your preferred language.
+          <h1 className="text-4xl font-black tracking-tight text-slate-950 sm:text-5xl">
+            Connect your inbox without the stress.
+          </h1>
+          <p className="mt-4 max-w-xl text-base leading-8 text-slate-600">
+            We give you a forwarding address. You forward suspicious mail. TrustLayer explains what is risky in plain language.
           </p>
         </div>
         <div className="grid gap-3 sm:grid-cols-3">
           {[
             ["1", "Create address"],
-            ["2", "Forward email"],
-            ["3", "Get alerts"],
+            ["2", "Forward mail"],
+            ["3", "Feel safer"],
           ].map(([step, label]) => (
-            <div key={step} className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
-              <p className="text-2xl font-semibold text-cyan-200">{step}</p>
-              <p className="mt-2 text-sm text-slate-400">{label}</p>
+            <div key={step} className="social-card rounded-3xl p-4">
+              <p className="text-3xl font-black text-sky-500">{step}</p>
+              <p className="mt-2 text-sm font-semibold text-slate-600">{label}</p>
             </div>
           ))}
         </div>
       </section>
 
       {!result ? (
-        <section className="rounded-3xl border border-white/10 bg-white/[0.045] p-5 shadow-2xl shadow-black/30 sm:p-7">
+        <section className="soft-card rounded-[34px] p-5 sm:p-7">
           <div className="flex items-start gap-3">
-            <div className="rounded-2xl border border-cyan-300/20 bg-cyan-300/10 p-3 text-cyan-100">
+            <div className="rounded-3xl bg-sky-50 p-3 text-sky-500">
               <Mail className="h-5 w-5" />
             </div>
             <div>
-              <h2 className="text-xl font-semibold text-white">Email protection setup</h2>
-              <p className="mt-1 text-sm text-slate-400">Use a real address so alerts can be routed back to you.</p>
+              <h2 className="text-xl font-black text-slate-950">Email protection setup</h2>
+              <p className="mt-1 text-sm text-slate-500">Use a real address so alerts can be routed back to you.</p>
             </div>
           </div>
 
           <div className="mt-7 space-y-5">
             <div>
-              <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Your email address</label>
+              <label className="mb-2 block text-xs font-black uppercase tracking-[0.16em] text-slate-400">
+                Your email address
+              </label>
               <input
                 type="email"
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
                 placeholder="you@example.com"
-                className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white placeholder:text-slate-600 transition focus:border-cyan-300/60 focus:bg-black/30 focus:outline-none"
+                className="w-full rounded-[24px] border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 shadow-inner transition focus:border-sky-200 focus:bg-white focus:outline-none"
                 onKeyDown={(event) => event.key === "Enter" && signup()}
               />
             </div>
 
             <div>
-              <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+              <div className="mb-2 flex items-center gap-2 text-xs font-black uppercase tracking-[0.16em] text-slate-400">
                 <Languages className="h-3.5 w-3.5" />
                 Alert language
               </div>
@@ -102,10 +106,10 @@ export default function SignupPage() {
                     key={item.code}
                     type="button"
                     onClick={() => setLanguage(item.code)}
-                    className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
+                    className={`rounded-full border px-3 py-2 text-xs font-black transition hover:-translate-y-0.5 ${
                       language === item.code
-                        ? "border-cyan-300/50 bg-cyan-300/10 text-cyan-100"
-                        : "border-white/10 text-slate-500 hover:border-white/20 hover:text-slate-300"
+                        ? "border-sky-200 bg-sky-50 text-sky-600"
+                        : "border-slate-200 bg-white text-slate-500"
                     }`}
                   >
                     {item.label}
@@ -115,7 +119,7 @@ export default function SignupPage() {
             </div>
 
             {error && (
-              <p className="rounded-2xl border border-red-400/20 bg-red-400/10 px-4 py-3 text-sm text-red-100">
+              <p className="rounded-3xl bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-600">
                 {error}
               </p>
             )}
@@ -124,7 +128,7 @@ export default function SignupPage() {
               type="button"
               onClick={signup}
               disabled={loading || !email.trim()}
-              className="flex w-full items-center justify-center gap-2 rounded-2xl bg-cyan-400 px-4 py-3 text-sm font-bold text-slate-950 transition hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-50"
+              className="flex w-full items-center justify-center gap-2 rounded-[22px] bg-sky-500 px-5 py-4 text-sm font-black text-white shadow-xl shadow-sky-200 transition hover:-translate-y-0.5 hover:bg-sky-600 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
             >
               {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />}
               {loading ? "Setting up..." : "Get forwarding address"}
@@ -132,23 +136,23 @@ export default function SignupPage() {
           </div>
         </section>
       ) : (
-        <section className="rounded-3xl border border-emerald-300/25 bg-emerald-300/[0.06] p-5 shadow-2xl shadow-black/30 sm:p-7">
+        <section className="soft-card rounded-[34px] p-5 sm:p-7">
           <div className="flex items-center gap-3">
-            <div className="rounded-2xl border border-emerald-300/20 bg-emerald-300/10 p-3 text-emerald-100">
+            <div className="rounded-3xl bg-emerald-50 p-3 text-emerald-500">
               <CheckCircle2 className="h-6 w-6" />
             </div>
             <div>
-              <h2 className="text-xl font-semibold text-emerald-100">You are protected</h2>
-              <p className="text-sm text-slate-400">Your forwarding address is ready.</p>
+              <h2 className="text-xl font-black text-slate-950">You&apos;re protected</h2>
+              <p className="text-sm text-slate-500">Your forwarding address is ready.</p>
             </div>
           </div>
 
-          <div className="mt-6 rounded-2xl border border-white/10 bg-black/25 px-4 py-4 font-mono text-sm text-cyan-100 break-all">
+          <div className="mt-6 rounded-[24px] bg-slate-50 px-4 py-4 font-mono text-sm text-sky-700 break-all shadow-inner">
             {result.forwarding_address}
           </div>
 
           <div className="mt-6 space-y-3">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Setup instructions</p>
+            <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-400">Setup instructions</p>
             {[
               "Open Gmail or Outlook forwarding settings.",
               `Add this forwarding address: ${result.forwarding_address}`,
@@ -156,8 +160,8 @@ export default function SignupPage() {
               "Forward suspicious mail or create a filter.",
               "Return to the dashboard to watch TrustLayer analyze new emails.",
             ].map((step, index) => (
-              <div key={step} className="flex items-start gap-3 rounded-2xl border border-white/10 bg-white/[0.035] p-3 text-sm leading-6 text-slate-300">
-                <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-cyan-300/15 text-xs font-bold text-cyan-100">
+              <div key={step} className="flex items-start gap-3 rounded-3xl bg-slate-50 p-3 text-sm leading-6 text-slate-600">
+                <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-sky-100 text-xs font-black text-sky-600">
                   {index + 1}
                 </span>
                 <span>{step}</span>
@@ -165,7 +169,7 @@ export default function SignupPage() {
             ))}
           </div>
 
-          <Link href="/" className="mt-6 flex w-full items-center justify-center gap-2 rounded-2xl bg-cyan-400 px-4 py-3 text-sm font-bold text-slate-950 transition hover:bg-cyan-300">
+          <Link href="/" className="mt-6 flex w-full items-center justify-center gap-2 rounded-[22px] bg-slate-950 px-5 py-4 text-sm font-black text-white shadow-xl shadow-slate-200 transition hover:-translate-y-0.5">
             Go to dashboard
             <ArrowRight className="h-4 w-4" />
           </Link>
