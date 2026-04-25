@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { store } from "@/lib/store"
 import { runPipeline } from "@/lib/pipeline"
+import { createClient } from "@/lib/supabase/server"
 
 const SAMPLE_EMAILS = {
   irs: {
@@ -27,11 +28,18 @@ const SAMPLE_EMAILS = {
 
 export async function POST(req: NextRequest) {
   try {
+    const supabase = await createClient()
+    const { data: { user: authUser } } = await supabase.auth.getUser()
+
     const body = await req.json()
     const scenario = (body.scenario ?? "irs") as keyof typeof SAMPLE_EMAILS
     const sample = SAMPLE_EMAILS[scenario] ?? SAMPLE_EMAILS.irs
 
-    const user = store.getAllUsers()[0]
+    let user = store.getAllUsers()[0]
+    if (authUser) {
+      user = store.getOrRegisterUser(authUser.id, authUser.email ?? "")
+    }
+
     if (!user) return NextResponse.json({ error: "No users registered" }, { status: 404 })
 
     const { email, analysis } = await runPipeline({

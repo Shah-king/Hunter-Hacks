@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useCallback } from "react"
 import type { ComponentType } from "react"
+import { useRouter } from "next/navigation"
+import { createClient } from "@/lib/supabase/client"
 import {
   AlertTriangle,
   Bell,
@@ -15,7 +17,7 @@ import {
   Play,
   ShieldCheck,
 } from "lucide-react"
-import type { EmailWithAnalysis, RiskLevel } from "@/lib/types"
+import type { EmailWithAnalysis, RiskLevel, User } from "@/lib/types"
 
 type Stats = {
   total: number
@@ -246,6 +248,9 @@ function EmailCard({ item }: { item: EmailWithAnalysis }) {
 }
 
 export default function Dashboard() {
+  const router = useRouter()
+  const supabase = createClient()
+  const [user, setUser] = useState<User | null>(null)
   const [emails, setEmails] = useState<EmailWithAnalysis[]>([])
   const [stats, setStats] = useState<Stats>({ total: 0, fraud: 0, suspicious: 0, alertsSent: 0, languages: [] })
   const [filter, setFilter] = useState<RiskFilter>("all")
@@ -260,9 +265,16 @@ export default function Dashboard() {
       const data = await res.json()
       setEmails(data.emails)
       setStats(data.stats)
+      if (data.user) {
+        setUser(data.user)
+      } else {
+        router.push("/login")
+      }
+    } else {
+      router.push("/login")
     }
     setInitialLoading(false)
-  }, [])
+  }, [router])
 
   useEffect(() => {
     const timeout = setTimeout(() => {
@@ -314,6 +326,23 @@ export default function Dashboard() {
             <p className="mt-4 max-w-xl text-sm leading-6 text-slate-400 sm:text-base">
               TrustLayer scans forwarded emails, explains the risk in plain language, and sends alerts when a scam needs immediate attention.
             </p>
+            {user && (
+              <div className="mt-6 rounded-xl border border-white/10 bg-black/20 p-4">
+                <p className="text-sm font-medium text-slate-300">Your forwarding address:</p>
+                <div className="mt-2 flex items-center justify-between gap-4 rounded-lg bg-black/40 px-4 py-2">
+                  <code className="text-sm text-cyan-300">{user.forwarding_address}</code>
+                  <button
+                    onClick={async () => {
+                      await supabase.auth.signOut()
+                      router.push("/login")
+                    }}
+                    className="text-xs text-slate-500 transition hover:text-white"
+                  >
+                    Sign Out
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
           <div className="grid min-w-56 grid-cols-2 gap-3 rounded-2xl border border-white/10 bg-black/20 p-3">
             <div>
