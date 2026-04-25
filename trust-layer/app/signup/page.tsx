@@ -1,13 +1,15 @@
 "use client"
 
+import Link from "next/link"
 import { useState } from "react"
+import { ArrowRight, CheckCircle2, Languages, Loader2, Mail, ShieldCheck } from "lucide-react"
 
 const LANGUAGES = [
   { code: "en", label: "English" },
-  { code: "zh", label: "中文 (Chinese)" },
-  { code: "es", label: "Español (Spanish)" },
-  { code: "bn", label: "বাংলা (Bengali)" },
-  { code: "ht", label: "Kreyòl (Haitian Creole)" },
+  { code: "zh", label: "Chinese" },
+  { code: "es", label: "Spanish" },
+  { code: "bn", label: "Bengali" },
+  { code: "ht", label: "Haitian Creole" },
 ]
 
 export default function SignupPage() {
@@ -38,90 +40,136 @@ export default function SignupPage() {
   }
 
   return (
-    <main className="max-w-lg mx-auto px-4 py-12 w-full space-y-8">
+    <main className="mx-auto grid min-h-[calc(100vh-72px)] w-full max-w-6xl items-center gap-8 px-4 py-8 sm:px-6 lg:grid-cols-[0.95fr_1.05fr] lg:px-8">
+      <section className="space-y-6">
+        <div className="inline-flex items-center gap-2 rounded-full border border-cyan-300/20 bg-cyan-300/10 px-3 py-1 text-xs font-medium text-cyan-100">
+          <ShieldCheck className="h-3.5 w-3.5" />
+          Guided setup
+        </div>
+        <div>
+          <h1 className="text-4xl font-semibold tracking-tight text-white sm:text-5xl">Connect your inbox in minutes.</h1>
+          <p className="mt-4 max-w-xl text-sm leading-6 text-slate-400 sm:text-base">
+            TrustLayer gives every user a forwarding address. Forward suspicious mail there and the dashboard will score, explain, and alert in your preferred language.
+          </p>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-3">
+          {[
+            ["1", "Create address"],
+            ["2", "Forward email"],
+            ["3", "Get alerts"],
+          ].map(([step, label]) => (
+            <div key={step} className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+              <p className="text-2xl font-semibold text-cyan-200">{step}</p>
+              <p className="mt-2 text-sm text-slate-400">{label}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
       {!result ? (
-        <>
-          <div className="text-center space-y-2">
-            <div className="text-5xl mb-4">🛡️</div>
-            <h2 className="text-2xl font-bold">Get Protected</h2>
-            <p className="text-gray-400 text-sm leading-relaxed">
-              TrustLayer monitors your email for scams automatically.<br />
-              We&apos;ll give you a forwarding address — add it as an auto-forward rule in Gmail or Outlook.
-            </p>
+        <section className="rounded-3xl border border-white/10 bg-white/[0.045] p-5 shadow-2xl shadow-black/30 sm:p-7">
+          <div className="flex items-start gap-3">
+            <div className="rounded-2xl border border-cyan-300/20 bg-cyan-300/10 p-3 text-cyan-100">
+              <Mail className="h-5 w-5" />
+            </div>
+            <div>
+              <h2 className="text-xl font-semibold text-white">Email protection setup</h2>
+              <p className="mt-1 text-sm text-slate-400">Use a real address so alerts can be routed back to you.</p>
+            </div>
           </div>
 
-          <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 space-y-5">
+          <div className="mt-7 space-y-5">
             <div>
-              <label className="text-xs text-gray-400 uppercase tracking-widest block mb-2">Your Email Address</label>
+              <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Your email address</label>
               <input
                 type="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(event) => setEmail(event.target.value)}
                 placeholder="you@example.com"
-                className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-sm text-gray-100 placeholder-gray-600 focus:outline-none focus:border-blue-500"
-                onKeyDown={(e) => e.key === "Enter" && signup()}
+                className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white placeholder:text-slate-600 transition focus:border-cyan-300/60 focus:bg-black/30 focus:outline-none"
+                onKeyDown={(event) => event.key === "Enter" && signup()}
               />
             </div>
 
             <div>
-              <label className="text-xs text-gray-400 uppercase tracking-widest block mb-2">Alert Language</label>
+              <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                <Languages className="h-3.5 w-3.5" />
+                Alert language
+              </div>
               <div className="flex flex-wrap gap-2">
-                {LANGUAGES.map((l) => (
+                {LANGUAGES.map((item) => (
                   <button
-                    key={l.code}
-                    onClick={() => setLanguage(l.code)}
-                    className={`px-3 py-1.5 rounded-lg text-xs border transition-all ${
-                      language === l.code
-                        ? "border-purple-500 bg-purple-500/10 text-purple-300"
-                        : "border-gray-700 text-gray-400 hover:border-gray-500"
+                    key={item.code}
+                    type="button"
+                    onClick={() => setLanguage(item.code)}
+                    className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
+                      language === item.code
+                        ? "border-cyan-300/50 bg-cyan-300/10 text-cyan-100"
+                        : "border-white/10 text-slate-500 hover:border-white/20 hover:text-slate-300"
                     }`}
                   >
-                    {l.label}
+                    {item.label}
                   </button>
                 ))}
               </div>
             </div>
 
-            {error && <p className="text-sm text-red-400 bg-red-950 border border-red-800 rounded-lg px-3 py-2">{error}</p>}
+            {error && (
+              <p className="rounded-2xl border border-red-400/20 bg-red-400/10 px-4 py-3 text-sm text-red-100">
+                {error}
+              </p>
+            )}
 
             <button
+              type="button"
               onClick={signup}
               disabled={loading || !email.trim()}
-              className="w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-40 disabled:cursor-not-allowed font-semibold text-sm transition-all"
+              className="flex w-full items-center justify-center gap-2 rounded-2xl bg-cyan-400 px-4 py-3 text-sm font-bold text-slate-950 transition hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {loading ? "Setting up..." : "Get My Forwarding Address →"}
+              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />}
+              {loading ? "Setting up..." : "Get forwarding address"}
             </button>
           </div>
-        </>
+        </section>
       ) : (
-        <div className="bg-gray-900 border border-green-800 rounded-2xl p-8 space-y-6 text-center">
-          <div className="text-5xl">✅</div>
-          <div>
-            <h2 className="text-xl font-bold text-green-400 mb-2">You&apos;re Protected!</h2>
-            <p className="text-gray-400 text-sm">Your TrustLayer forwarding address:</p>
-            <div className="mt-3 bg-gray-800 rounded-xl px-4 py-3 font-mono text-blue-300 text-sm break-all">
-              {result.forwarding_address}
+        <section className="rounded-3xl border border-emerald-300/25 bg-emerald-300/[0.06] p-5 shadow-2xl shadow-black/30 sm:p-7">
+          <div className="flex items-center gap-3">
+            <div className="rounded-2xl border border-emerald-300/20 bg-emerald-300/10 p-3 text-emerald-100">
+              <CheckCircle2 className="h-6 w-6" />
+            </div>
+            <div>
+              <h2 className="text-xl font-semibold text-emerald-100">You are protected</h2>
+              <p className="text-sm text-slate-400">Your forwarding address is ready.</p>
             </div>
           </div>
-          <div className="text-left space-y-3">
-            <p className="text-xs text-gray-400 uppercase tracking-widest">Setup Instructions</p>
+
+          <div className="mt-6 rounded-2xl border border-white/10 bg-black/25 px-4 py-4 font-mono text-sm text-cyan-100 break-all">
+            {result.forwarding_address}
+          </div>
+
+          <div className="mt-6 space-y-3">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Setup instructions</p>
             {[
-              "Open Gmail → Settings → See all settings → Forwarding and POP/IMAP",
-              `Click "Add a forwarding address" → Enter: ${result.forwarding_address}`,
-              "Confirm the verification email from Google",
-              "Set to forward all mail (or create a filter for suspicious emails)",
-              "TrustLayer will now monitor every email you receive",
-            ].map((step, i) => (
-              <div key={i} className="flex items-start gap-3 text-sm text-gray-300">
-                <span className="shrink-0 w-5 h-5 rounded-full bg-blue-700 text-white text-xs flex items-center justify-center font-bold mt-0.5">{i + 1}</span>
+              "Open Gmail or Outlook forwarding settings.",
+              `Add this forwarding address: ${result.forwarding_address}`,
+              "Confirm the provider verification email.",
+              "Forward suspicious mail or create a filter.",
+              "Return to the dashboard to watch TrustLayer analyze new emails.",
+            ].map((step, index) => (
+              <div key={step} className="flex items-start gap-3 rounded-2xl border border-white/10 bg-white/[0.035] p-3 text-sm leading-6 text-slate-300">
+                <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-cyan-300/15 text-xs font-bold text-cyan-100">
+                  {index + 1}
+                </span>
                 <span>{step}</span>
               </div>
             ))}
           </div>
-          <a href="/" className="block w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-500 font-semibold text-sm text-center transition-all">
-            Go to Dashboard →
-          </a>
-        </div>
+
+          <Link href="/" className="mt-6 flex w-full items-center justify-center gap-2 rounded-2xl bg-cyan-400 px-4 py-3 text-sm font-bold text-slate-950 transition hover:bg-cyan-300">
+            Go to dashboard
+            <ArrowRight className="h-4 w-4" />
+          </Link>
+        </section>
       )}
     </main>
   )

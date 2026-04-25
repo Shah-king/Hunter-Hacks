@@ -1,7 +1,21 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import type { EmailWithAnalysis } from "@/lib/types"
+import type { ComponentType } from "react"
+import {
+  AlertTriangle,
+  Bell,
+  CheckCircle2,
+  ChevronDown,
+  ChevronUp,
+  Filter,
+  Inbox,
+  Loader2,
+  MailWarning,
+  Play,
+  ShieldCheck,
+} from "lucide-react"
+import type { EmailWithAnalysis, RiskLevel } from "@/lib/types"
 
 type Stats = {
   total: number
@@ -11,121 +25,223 @@ type Stats = {
   languages: string[]
 }
 
-type RiskFilter = "all" | "scam" | "suspicious" | "safe"
+type RiskFilter = "all" | RiskLevel
 
-const RISK_STYLES = {
-  scam: { badge: "bg-red-600 text-white", border: "border-red-600", dot: "bg-red-500" },
-  suspicious: { badge: "bg-yellow-500 text-black", border: "border-yellow-500", dot: "bg-yellow-400" },
-  safe: { badge: "bg-green-600 text-white", border: "border-green-700", dot: "bg-green-500" },
+const RISK_STYLES: Record<
+  RiskLevel,
+  {
+    label: string
+    badge: string
+    border: string
+    dot: string
+    glow: string
+    icon: ComponentType<{ className?: string }>
+  }
+> = {
+  scam: {
+    label: "Scam",
+    badge: "bg-red-500/15 text-red-200 ring-1 ring-red-400/35",
+    border: "border-red-400/40",
+    dot: "bg-red-400 shadow-[0_0_18px_rgba(248,113,113,0.75)]",
+    glow: "from-red-500/20",
+    icon: MailWarning,
+  },
+  suspicious: {
+    label: "Suspicious",
+    badge: "bg-amber-400/15 text-amber-100 ring-1 ring-amber-300/35",
+    border: "border-amber-300/35",
+    dot: "bg-amber-300 shadow-[0_0_18px_rgba(252,211,77,0.55)]",
+    glow: "from-amber-400/16",
+    icon: AlertTriangle,
+  },
+  safe: {
+    label: "Safe",
+    badge: "bg-emerald-400/15 text-emerald-100 ring-1 ring-emerald-300/35",
+    border: "border-emerald-300/30",
+    dot: "bg-emerald-300 shadow-[0_0_18px_rgba(110,231,183,0.45)]",
+    glow: "from-emerald-400/14",
+    icon: CheckCircle2,
+  },
 }
 
 const SCENARIOS = [
-  { id: "irs", label: "IRS Scam", icon: "🏛️" },
-  { id: "phishing", label: "Phishing", icon: "🎣" },
-  { id: "spanish", label: "Spanish Scam", icon: "🇪🇸" },
-  { id: "job", label: "Job Fraud", icon: "💼" },
+  { id: "irs", label: "IRS Scam", detail: "Urgent government threat" },
+  { id: "phishing", label: "Phishing", detail: "Credential theft link" },
+  { id: "spanish", label: "Spanish Scam", detail: "Translated fraud alert" },
+  { id: "job", label: "Job Fraud", detail: "Fake hiring offer" },
 ]
+
+function StatCard({
+  label,
+  value,
+  tone,
+  icon: Icon,
+}: {
+  label: string
+  value: number | string
+  tone: string
+  icon: ComponentType<{ className?: string }>
+}) {
+  return (
+    <div className="group rounded-2xl border border-white/10 bg-white/[0.045] p-4 shadow-2xl shadow-black/20 transition hover:-translate-y-0.5 hover:border-white/20 hover:bg-white/[0.065]">
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">{label}</p>
+        <div className={`rounded-xl border border-white/10 p-2 ${tone}`}>
+          <Icon className="h-4 w-4" />
+        </div>
+      </div>
+      <p className="mt-4 text-3xl font-semibold tracking-tight text-white">{value}</p>
+    </div>
+  )
+}
+
+function EmailSkeleton() {
+  return (
+    <div className="space-y-3">
+      {[0, 1, 2].map((item) => (
+        <div key={item} className="rounded-2xl border border-white/10 bg-white/[0.035] p-5">
+          <div className="flex animate-pulse items-center justify-between gap-4">
+            <div className="flex flex-1 items-center gap-3">
+              <div className="h-3 w-3 rounded-full bg-slate-700" />
+              <div className="w-full max-w-md space-y-2">
+                <div className="h-4 w-2/3 rounded bg-slate-800" />
+                <div className="h-3 w-1/3 rounded bg-slate-800" />
+              </div>
+            </div>
+            <div className="hidden h-7 w-24 rounded-full bg-slate-800 sm:block" />
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function EmptyState({ onSimulate }: { onSimulate: () => void }) {
+  return (
+    <div className="rounded-3xl border border-dashed border-white/15 bg-white/[0.035] px-6 py-12 text-center">
+      <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border border-cyan-300/20 bg-cyan-300/10 text-cyan-200">
+        <Inbox className="h-7 w-7" />
+      </div>
+      <h2 className="mt-5 text-xl font-semibold text-white">No emails processed yet</h2>
+      <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-slate-400">
+        Run a sample through the pipeline to show judges how TrustLayer classifies messages, records the analysis, and updates the dashboard.
+      </p>
+      <button
+        onClick={onSimulate}
+        className="mt-6 inline-flex items-center gap-2 rounded-xl bg-cyan-400 px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-cyan-300"
+      >
+        <Play className="h-4 w-4" />
+        Run first simulation
+      </button>
+    </div>
+  )
+}
 
 function EmailCard({ item }: { item: EmailWithAnalysis }) {
   const [expanded, setExpanded] = useState(false)
   const analysis = item.analysis
   const risk = analysis ? RISK_STYLES[analysis.risk_level] : null
+  const RiskIcon = risk?.icon
 
   return (
-    <div
-      className={`bg-gray-900 border rounded-2xl overflow-hidden transition-all cursor-pointer ${
-        risk ? risk.border : "border-gray-800"
-      } hover:opacity-90`}
-      onClick={() => setExpanded((v) => !v)}
+    <article
+      className={`group relative overflow-hidden rounded-2xl border bg-slate-950/70 shadow-2xl shadow-black/20 transition duration-200 hover:-translate-y-0.5 hover:bg-slate-900/80 ${
+        risk ? risk.border : "border-white/10"
+      }`}
     >
-      <div className="px-5 py-4 flex items-center justify-between gap-4">
-        <div className="flex items-center gap-3 min-w-0">
-          <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${risk?.dot ?? "bg-gray-600"} ${analysis?.risk_level === "scam" ? "animate-pulse" : ""}`} />
+      {risk && <div className={`pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-b ${risk.glow} to-transparent opacity-80`} />}
+      <button
+        type="button"
+        onClick={() => setExpanded((value) => !value)}
+        className="relative grid w-full grid-cols-[1fr_auto] items-center gap-4 p-4 text-left sm:p-5"
+      >
+        <div className="flex min-w-0 items-center gap-3">
+          <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${risk?.dot ?? "bg-slate-600"} ${analysis?.risk_level === "scam" ? "animate-pulse" : ""}`} />
           <div className="min-w-0">
-            <p className="text-sm font-medium text-gray-100 truncate">{item.subject || "(no subject)"}</p>
-            <p className="text-xs text-gray-500 truncate">{item.sender} · {new Date(item.received_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</p>
+            <p className="truncate text-sm font-semibold text-slate-100 sm:text-base">{item.subject || "(no subject)"}</p>
+            <p className="mt-1 truncate text-xs text-slate-500">
+              {item.sender} - {new Date(item.received_at).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+            </p>
           </div>
         </div>
-        <div className="flex items-center gap-3 shrink-0">
+        <div className="flex items-center gap-2 sm:gap-3">
           {item.language_name && item.detected_language !== "en" && (
-            <span className="text-xs text-gray-500 border border-gray-700 rounded-full px-2 py-0.5">{item.language_name}</span>
+            <span className="hidden rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-xs text-slate-400 sm:inline-flex">
+              {item.language_name}
+            </span>
           )}
-          {analysis && (
-            <>
-              <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${risk?.badge}`}>
-                {analysis.risk_level.toUpperCase()}
-              </span>
-              <span className="text-sm font-bold text-white w-8 text-right">{analysis.final_score}</span>
-            </>
+          {analysis && risk && RiskIcon && (
+            <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-bold ${risk.badge}`}>
+              <RiskIcon className="h-3.5 w-3.5" />
+              {risk.label}
+            </span>
           )}
-          {analysis?.alert_sent && (
-            <span className="text-xs text-orange-400 border border-orange-800 bg-orange-950 rounded-full px-2 py-0.5">✉️ Alert sent</span>
-          )}
-          <span className="text-gray-600 text-xs">{expanded ? "▲" : "▼"}</span>
+          {analysis && <span className="hidden min-w-10 text-right text-sm font-bold text-white sm:inline">{analysis.final_score}</span>}
+          {expanded ? <ChevronUp className="h-4 w-4 text-slate-500" /> : <ChevronDown className="h-4 w-4 text-slate-500" />}
         </div>
-      </div>
+      </button>
 
       {expanded && analysis && (
-        <div className="border-t border-gray-800 px-5 py-4 space-y-4 bg-gray-950">
-          {/* Score breakdown */}
-          <div className="grid grid-cols-3 gap-3 text-center">
-            <div className="bg-gray-900 rounded-xl py-3">
-              <p className="text-lg font-bold text-blue-400">{analysis.rule_score}</p>
-              <p className="text-xs text-gray-500 mt-0.5">Rule Score</p>
-            </div>
-            <div className="bg-gray-900 rounded-xl py-3">
-              <p className="text-lg font-bold text-purple-400">{analysis.ai_score}</p>
-              <p className="text-xs text-gray-500 mt-0.5">AI Score</p>
-            </div>
-            <div className={`rounded-xl py-3 ${risk?.badge}`}>
-              <p className="text-lg font-bold">{analysis.final_score}</p>
-              <p className="text-xs mt-0.5 opacity-80">Final Score</p>
-            </div>
+        <div className="relative border-t border-white/10 bg-black/20 px-4 py-5 sm:px-5">
+          <div className="grid gap-3 sm:grid-cols-3">
+            {[
+              ["Rule Score", analysis.rule_score, "text-cyan-200"],
+              ["AI Score", analysis.ai_score, "text-violet-200"],
+              ["Final Score", analysis.final_score, "text-white"],
+            ].map(([label, value, color]) => (
+              <div key={label} className="rounded-2xl border border-white/10 bg-white/[0.045] p-4">
+                <p className={`text-2xl font-semibold ${color}`}>{value}</p>
+                <p className="mt-1 text-xs uppercase tracking-[0.16em] text-slate-500">{label}</p>
+              </div>
+            ))}
           </div>
 
-          {/* Scam type */}
-          <div>
-            <p className="text-xs text-gray-500 uppercase tracking-widest mb-1">Scam Type</p>
-            <p className="text-sm text-gray-200 font-medium">{analysis.scam_type}</p>
-          </div>
+          <div className="mt-5 grid gap-5 lg:grid-cols-[1fr_1fr]">
+            <section>
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Analysis</p>
+              <p className="mt-2 text-sm leading-6 text-slate-300">{analysis.explanation}</p>
+              <p className="mt-3 inline-flex rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs text-slate-300">
+                {analysis.scam_type || "General fraud pattern"}
+              </p>
+            </section>
 
-          {/* Red flags */}
-          {analysis.red_flags.length > 0 && (
-            <div>
-              <p className="text-xs text-gray-500 uppercase tracking-widest mb-2">Red Flags</p>
-              <ul className="space-y-1">
-                {analysis.red_flags.map((f, i) => (
-                  <li key={i} className="text-xs text-red-400 flex items-start gap-1.5">
-                    <span className="shrink-0 mt-0.5">⚑</span><span>{f}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          {/* Explanation */}
-          <div>
-            <p className="text-xs text-gray-500 uppercase tracking-widest mb-1">Analysis</p>
-            <p className="text-sm text-gray-300 leading-relaxed whitespace-pre-wrap">{analysis.explanation}</p>
-          </div>
-
-          {/* Actions */}
-          {analysis.actions.length > 0 && (
-            <div>
-              <p className="text-xs text-gray-500 uppercase tracking-widest mb-2">Recommended Actions</p>
-              <ol className="space-y-1.5">
-                {analysis.actions.map((a, i) => (
-                  <li key={i} className="flex items-start gap-2.5 text-sm text-gray-200">
-                    <span className="shrink-0 w-5 h-5 rounded-full bg-blue-700 text-white text-xs flex items-center justify-center font-bold mt-0.5">{i + 1}</span>
-                    <span>{a}</span>
+            <section>
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Recommended Actions</p>
+              <ol className="mt-2 space-y-2">
+                {analysis.actions.map((action, index) => (
+                  <li key={action} className="flex items-start gap-2 text-sm leading-6 text-slate-300">
+                    <span className="mt-1 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-cyan-300/15 text-xs font-bold text-cyan-200">
+                      {index + 1}
+                    </span>
+                    <span>{action}</span>
                   </li>
                 ))}
               </ol>
+            </section>
+          </div>
+
+          {analysis.red_flags.length > 0 && (
+            <section className="mt-5">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Red Flags</p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {analysis.red_flags.map((flag) => (
+                  <span key={flag} className="rounded-full border border-red-400/20 bg-red-400/10 px-3 py-1 text-xs text-red-100">
+                    {flag}
+                  </span>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {analysis.alert_sent && (
+            <div className="mt-5 inline-flex items-center gap-2 rounded-full border border-orange-300/20 bg-orange-300/10 px-3 py-1.5 text-xs font-medium text-orange-100">
+              <Bell className="h-3.5 w-3.5" />
+              Alert email sent
             </div>
           )}
         </div>
       )}
-    </div>
+    </article>
   )
 }
 
@@ -134,6 +250,7 @@ export default function Dashboard() {
   const [stats, setStats] = useState<Stats>({ total: 0, fraud: 0, suspicious: 0, alertsSent: 0, languages: [] })
   const [filter, setFilter] = useState<RiskFilter>("all")
   const [simulating, setSimulating] = useState(false)
+  const [initialLoading, setInitialLoading] = useState(true)
   const [simScenario, setSimScenario] = useState("irs")
   const [lastSimResult, setLastSimResult] = useState<string | null>(null)
 
@@ -144,12 +261,18 @@ export default function Dashboard() {
       setEmails(data.emails)
       setStats(data.stats)
     }
+    setInitialLoading(false)
   }, [])
 
   useEffect(() => {
-    fetchEmails()
+    const timeout = setTimeout(() => {
+      void fetchEmails()
+    }, 0)
     const interval = setInterval(fetchEmails, 4000)
-    return () => clearInterval(interval)
+    return () => {
+      clearTimeout(timeout)
+      clearInterval(interval)
+    }
   }, [fetchEmails])
 
   async function simulate() {
@@ -163,110 +286,143 @@ export default function Dashboard() {
       })
       const data = await res.json()
       if (res.ok) {
-        setLastSimResult(`✅ Simulation complete — ${data.analysis.risk_level.toUpperCase()} (score: ${data.analysis.final_score})`)
+        setLastSimResult(`Simulation complete - ${data.analysis.risk_level.toUpperCase()} score ${data.analysis.final_score}`)
         await fetchEmails()
       } else {
-        setLastSimResult(`❌ ${data.error}`)
+        setLastSimResult(data.error ?? "Simulation failed")
       }
     } catch {
-      setLastSimResult("❌ Network error")
+      setLastSimResult("Network error")
     } finally {
       setSimulating(false)
     }
   }
 
-  const filtered = filter === "all" ? emails : emails.filter((e) => e.analysis?.risk_level === filter)
+  const filtered = filter === "all" ? emails : emails.filter((email) => email.analysis?.risk_level === filter)
+  const caughtRate = stats.total > 0 ? Math.round(((stats.fraud + stats.suspicious) / stats.total) * 100) : 0
 
   return (
-    <main className="max-w-3xl mx-auto px-4 py-8 space-y-6">
-      {/* Stats bar */}
-      <div className="grid grid-cols-4 gap-3">
-        <div className="bg-gray-900 border border-gray-800 rounded-xl px-4 py-3 text-center">
-          <p className="text-2xl font-bold text-white">{stats.total}</p>
-          <p className="text-xs text-gray-500 mt-0.5">Emails Scanned</p>
-        </div>
-        <div className="bg-red-950 border border-red-900 rounded-xl px-4 py-3 text-center">
-          <p className="text-2xl font-bold text-red-400">{stats.fraud}</p>
-          <p className="text-xs text-red-500 mt-0.5">Scams Caught</p>
-        </div>
-        <div className="bg-yellow-950 border border-yellow-900 rounded-xl px-4 py-3 text-center">
-          <p className="text-2xl font-bold text-yellow-400">{stats.suspicious}</p>
-          <p className="text-xs text-yellow-600 mt-0.5">Suspicious</p>
-        </div>
-        <div className="bg-gray-900 border border-gray-800 rounded-xl px-4 py-3 text-center">
-          <p className="text-2xl font-bold text-orange-400">{stats.alertsSent}</p>
-          <p className="text-xs text-gray-500 mt-0.5">Alerts Sent</p>
-        </div>
-      </div>
-
-      {/* Simulate panel */}
-      <div className="bg-gray-900 border border-gray-700 rounded-2xl p-5 space-y-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm font-semibold text-white">⚡ Simulate Email</p>
-            <p className="text-xs text-gray-500">Run a sample scam through the full pipeline</p>
+    <main className="mx-auto flex w-full max-w-6xl flex-col gap-7 px-4 py-8 sm:px-6 lg:px-8">
+      <section className="overflow-hidden rounded-3xl border border-white/10 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.16),transparent_32%),linear-gradient(135deg,rgba(15,23,42,0.95),rgba(2,6,23,0.92))] p-6 shadow-2xl shadow-black/30 sm:p-8">
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+          <div className="max-w-2xl">
+            <div className="inline-flex items-center gap-2 rounded-full border border-cyan-300/20 bg-cyan-300/10 px-3 py-1 text-xs font-medium text-cyan-100">
+              <ShieldCheck className="h-3.5 w-3.5" />
+              Live email defense dashboard
+            </div>
+            <h1 className="mt-5 text-3xl font-semibold tracking-tight text-white sm:text-5xl">Catch fraud before it reaches someone vulnerable.</h1>
+            <p className="mt-4 max-w-xl text-sm leading-6 text-slate-400 sm:text-base">
+              TrustLayer scans forwarded emails, explains the risk in plain language, and sends alerts when a scam needs immediate attention.
+            </p>
           </div>
-          <span className="text-xs text-green-400 border border-green-800 bg-green-950 rounded-full px-3 py-1">🟢 Live Pipeline</span>
+          <div className="grid min-w-56 grid-cols-2 gap-3 rounded-2xl border border-white/10 bg-black/20 p-3">
+            <div>
+              <p className="text-3xl font-semibold text-white">{caughtRate}%</p>
+              <p className="text-xs text-slate-500">flag rate</p>
+            </div>
+            <div>
+              <p className="text-3xl font-semibold text-cyan-200">{stats.languages.length || 1}</p>
+              <p className="text-xs text-slate-500">languages</p>
+            </div>
+          </div>
         </div>
-        <div className="grid grid-cols-4 gap-2">
-          {SCENARIOS.map((s) => (
-            <button
-              key={s.id}
-              onClick={() => setSimScenario(s.id)}
-              className={`flex flex-col items-center gap-1 py-2.5 rounded-xl border text-xs font-medium transition-all ${
-                simScenario === s.id
-                  ? "border-blue-500 bg-blue-500/10 text-blue-300"
-                  : "border-gray-700 text-gray-400 hover:border-gray-500"
-              }`}
-            >
-              <span className="text-lg">{s.icon}</span>
-              <span>{s.label}</span>
-            </button>
-          ))}
-        </div>
-        <button
-          onClick={simulate}
-          disabled={simulating}
-          className="w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed font-semibold text-sm transition-all"
-        >
-          {simulating ? "Running pipeline..." : "Run Simulation →"}
-        </button>
-        {lastSimResult && (
-          <p className={`text-sm text-center ${lastSimResult.startsWith("✅") ? "text-green-400" : "text-red-400"}`}>
-            {lastSimResult}
-          </p>
-        )}
-      </div>
+      </section>
 
-      {/* Filter + email feed */}
-      <div>
-        <div className="flex items-center justify-between mb-4">
-          <p className="text-sm text-gray-400">
-            {filtered.length === 0 ? "No emails yet — run a simulation above" : `${filtered.length} email${filtered.length !== 1 ? "s" : ""}`}
-          </p>
-          <div className="flex gap-1.5">
-            {(["all", "scam", "suspicious", "safe"] as RiskFilter[]).map((f) => (
+      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <StatCard label="Emails Scanned" value={stats.total} tone="bg-cyan-300/10 text-cyan-200" icon={Inbox} />
+        <StatCard label="Scams Caught" value={stats.fraud} tone="bg-red-400/10 text-red-200" icon={MailWarning} />
+        <StatCard label="Suspicious" value={stats.suspicious} tone="bg-amber-300/10 text-amber-100" icon={AlertTriangle} />
+        <StatCard label="Alerts Sent" value={stats.alertsSent} tone="bg-violet-300/10 text-violet-100" icon={Bell} />
+      </section>
+
+      <section className="grid gap-6 lg:grid-cols-[0.95fr_1.4fr]">
+        <div className="rounded-3xl border border-white/10 bg-white/[0.045] p-5 shadow-2xl shadow-black/20">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h2 className="text-lg font-semibold text-white">Simulate Email</h2>
+              <p className="mt-1 text-sm leading-6 text-slate-400">Run a prepared case through the full pipeline and refresh the feed.</p>
+            </div>
+            <span className="rounded-full border border-emerald-300/20 bg-emerald-300/10 px-3 py-1 text-xs font-medium text-emerald-100">
+              Live pipeline
+            </span>
+          </div>
+
+          <div className="mt-5 grid gap-2 sm:grid-cols-2">
+            {SCENARIOS.map((scenario) => (
               <button
-                key={f}
-                onClick={() => setFilter(f)}
-                className={`text-xs px-3 py-1 rounded-full border transition-all ${
-                  filter === f
-                    ? "border-blue-500 bg-blue-500/10 text-blue-300"
-                    : "border-gray-700 text-gray-500 hover:border-gray-500"
+                key={scenario.id}
+                type="button"
+                onClick={() => setSimScenario(scenario.id)}
+                className={`rounded-2xl border p-4 text-left transition hover:-translate-y-0.5 ${
+                  simScenario === scenario.id
+                    ? "border-cyan-300/50 bg-cyan-300/10 text-white"
+                    : "border-white/10 bg-black/15 text-slate-400 hover:border-white/20"
                 }`}
               >
-                {f === "all" ? "All" : f.charAt(0).toUpperCase() + f.slice(1)}
+                <p className="text-sm font-semibold">{scenario.label}</p>
+                <p className="mt-1 text-xs text-slate-500">{scenario.detail}</p>
               </button>
             ))}
           </div>
+
+          <button
+            type="button"
+            onClick={simulate}
+            disabled={simulating}
+            className="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl bg-cyan-400 px-4 py-3 text-sm font-bold text-slate-950 transition hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {simulating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
+            {simulating ? "Running pipeline..." : "Run Simulation"}
+          </button>
+
+          {lastSimResult && (
+            <div className="mt-4 rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-slate-300">
+              {lastSimResult}
+            </div>
+          )}
         </div>
 
-        <div className="space-y-3">
-          {filtered.map((item) => (
-            <EmailCard key={item.id} item={item} />
-          ))}
+        <div className="min-w-0">
+          <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 className="text-lg font-semibold text-white">Processed Emails</h2>
+              <p className="text-sm text-slate-500">{filtered.length} visible of {emails.length} total</p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="inline-flex items-center gap-1.5 text-xs font-medium uppercase tracking-[0.16em] text-slate-500">
+                <Filter className="h-3.5 w-3.5" />
+                Filter
+              </span>
+              {(["all", "scam", "suspicious", "safe"] as RiskFilter[]).map((value) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setFilter(value)}
+                  className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
+                    filter === value
+                      ? "border-cyan-300/50 bg-cyan-300/10 text-cyan-100"
+                      : "border-white/10 text-slate-500 hover:border-white/20 hover:text-slate-300"
+                  }`}
+                >
+                  {value === "all" ? "All" : RISK_STYLES[value].label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {initialLoading ? (
+            <EmailSkeleton />
+          ) : filtered.length === 0 ? (
+            <EmptyState onSimulate={simulate} />
+          ) : (
+            <div className="space-y-3">
+              {filtered.map((item) => (
+                <EmailCard key={item.id} item={item} />
+              ))}
+            </div>
+          )}
         </div>
-      </div>
+      </section>
     </main>
   )
 }
