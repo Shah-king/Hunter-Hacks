@@ -8,51 +8,60 @@ import FloatingActionButton from "../components/FloatingActionButton"
 const POSTS = [
   {
     id: "p1",
+    user: "Maya from Queens",
+    initials: "MQ",
+    points: 328,
+    tag: "IRS Scam",
+    risk: "High",
+    color: "from-pink-300 to-sky-300",
+    story: "Almost had a heart attack reading this 😭 thought I was going to jail for taxes",
+    message:
+      "Final notice: your tax case will be sent to federal court unless you pay today with gift cards.",
+    reaction: "Why is the IRS asking for Apple gift cards 💀",
+    time: "just now",
+    reactions: { got: 44, confirmed: 72, love: 130 },
+  },
+  {
+    id: "p2",
+    user: "Lina in Flushing",
+    initials: "林",
+    points: 412,
+    tag: "Embassy Scam",
+    risk: "High",
+    color: "from-rose-200 to-amber-200",
+    story: "我妈差点信了这个，还让我帮她转钱 😭",
+    message: "您好，这里是中国大使馆，您的身份信息涉及案件，请立即配合调查。",
+    reaction: "大使馆什么时候用微信联系了？？？",
+    time: "12 min ago",
+    reactions: { got: 63, confirmed: 91, love: 144 },
+  },
+  {
+    id: "p3",
     user: "Anika",
     initials: "AN",
     points: 247,
     tag: "Job Scam",
-    color: "from-pink-200 to-sky-200",
-    message:
-      "Remote assistant job offered $85/hr and asked for my bank routing number before an interview.",
-    time: "8 min ago",
+    risk: "High",
+    color: "from-violet-200 to-pink-200",
+    story: "The job sounded cute until they asked for my routing number before the interview.",
+    message: "Remote assistant role. $85/hr. Send SSN and bank details today to reserve your position.",
+    reaction: "No interview, just vibes and identity theft.",
+    time: "28 min ago",
     reactions: { got: 24, confirmed: 41, love: 88 },
   },
   {
-    id: "p2",
+    id: "p4",
     user: "Luis",
     initials: "LU",
     points: 193,
     tag: "Bank Phishing",
+    risk: "Medium",
     color: "from-emerald-200 to-sky-200",
-    message:
-      "Text said my account was frozen and linked to a site that looked like Wells Fargo but had a zero in the URL.",
-    time: "21 min ago",
+    story: "Looked official for 0.5 seconds, then I saw the weird URL.",
+    message: "Your account is frozen. Verify at wells-farg0-secure-login.example within 24 hours.",
+    reaction: "The zero in Fargo was doing too much.",
+    time: "41 min ago",
     reactions: { got: 17, confirmed: 36, love: 52 },
-  },
-  {
-    id: "p3",
-    user: "Mei",
-    initials: "MX",
-    points: 318,
-    tag: "Immigration Threat",
-    color: "from-violet-200 to-pink-200",
-    message:
-      "Caller said they were from immigration and wanted payment by Zelle today. They knew my first name.",
-    time: "43 min ago",
-    reactions: { got: 31, confirmed: 58, love: 101 },
-  },
-  {
-    id: "p4",
-    user: "Samira",
-    initials: "SA",
-    points: 156,
-    tag: "IRS Scam",
-    color: "from-amber-200 to-rose-200",
-    message:
-      "Email threatened federal court unless I bought gift cards. Sharing so other students know the pattern.",
-    time: "1 hr ago",
-    reactions: { got: 44, confirmed: 72, love: 130 },
   },
 ]
 
@@ -67,32 +76,46 @@ function SocialPost({ post }: { post: (typeof POSTS)[number] }) {
   }
 
   return (
-    <article className="social-card rounded-[34px] p-5">
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex gap-3">
-          <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br ${post.color} text-sm font-black text-white shadow-sm`}>
-            {post.initials}
-          </div>
-          <div>
-            <div className="flex flex-wrap items-center gap-2">
-              <p className="font-black text-slate-950">{post.user}</p>
-              <span className="rounded-full bg-amber-50 px-2.5 py-1 text-xs font-black text-amber-600">
-                {post.points} pts
-              </span>
+    <article className="social-card overflow-hidden rounded-[34px]">
+      <div className="p-5">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex gap-3">
+            <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br ${post.color} text-sm font-black text-white shadow-sm`}>
+              {post.initials}
             </div>
-            <p className="mt-1 text-xs font-semibold text-slate-400">{post.time}</p>
+            <div>
+              <div className="flex flex-wrap items-center gap-2">
+                <p className="font-black text-slate-950">{post.user}</p>
+                <span className="rounded-full bg-amber-50 px-2.5 py-1 text-xs font-black text-amber-600">
+                  {post.points} pts
+                </span>
+              </div>
+              <p className="mt-1 text-xs font-semibold text-slate-400">{post.time}</p>
+            </div>
+          </div>
+          <div className="flex flex-col items-end gap-2">
+            <span className="rounded-full bg-rose-50 px-3 py-1 text-xs font-black text-rose-500">
+              {post.tag}
+            </span>
+            <span className="rounded-full bg-slate-50 px-3 py-1 text-xs font-black text-slate-500">
+              Risk: {post.risk}
+            </span>
           </div>
         </div>
-        <span className="rounded-full bg-rose-50 px-3 py-1 text-xs font-black text-rose-500">
-          {post.tag}
-        </span>
+
+        <p className="mt-5 text-[15px] font-semibold leading-7 text-slate-700">{post.story}</p>
+
+        <div className="mt-4 rounded-[26px] border border-slate-100 bg-slate-50 p-4">
+          <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-400">Scam message</p>
+          <p className="mt-2 text-[15px] leading-7 text-slate-800">“{post.message}”</p>
+        </div>
+
+        <p className="mt-3 rounded-3xl bg-gradient-to-br from-sky-50 to-pink-50 px-4 py-3 text-sm font-semibold leading-6 text-slate-600">
+          {post.reaction}
+        </p>
       </div>
 
-      <p className="mt-5 rounded-[26px] bg-slate-50 p-4 text-[15px] leading-7 text-slate-700">
-        {post.message}
-      </p>
-
-      <div className="mt-4 flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-2 border-t border-slate-100 bg-white px-5 py-4">
         <button
           type="button"
           onClick={() => react("got")}
@@ -145,7 +168,7 @@ export default function SocialPage() {
               Scams people are seeing right now
             </h1>
             <p className="mt-4 max-w-2xl text-base leading-7 text-slate-600">
-              A community feed for patterns, screenshots, warnings, and reassurance. Friendly enough to share, useful enough to act on.
+              A community feed for patterns, warnings, and reassurance. Friendly enough to share, useful enough to act on.
             </p>
           </div>
           <Link href="/#analyze" className="inline-flex items-center justify-center gap-2 rounded-full bg-slate-950 px-5 py-3 text-sm font-black text-white shadow-lg shadow-slate-200 transition hover:-translate-y-0.5">

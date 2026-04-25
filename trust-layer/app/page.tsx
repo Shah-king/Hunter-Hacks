@@ -1,493 +1,292 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
-import type { ComponentType } from "react"
-import { useRouter } from "next/navigation"
-import { createClient } from "@/lib/supabase/client"
+import { useState } from "react"
+import Link from "next/link"
 import {
+  Activity,
   AlertTriangle,
-  Bell,
   CheckCircle2,
-  ChevronDown,
-  ChevronUp,
-  Filter,
-  Inbox,
+  Heart,
   Loader2,
-  MailWarning,
-  Play,
+  MessageCircle,
+  Search,
   ShieldCheck,
+  Sparkles,
+  ThumbsUp,
+  TriangleAlert,
 } from "lucide-react"
-import type { EmailWithAnalysis, RiskLevel, User } from "@/lib/types"
+import FloatingActionButton from "./components/FloatingActionButton"
 
-type Stats = {
-  total: number
-  fraud: number
-  suspicious: number
-  alertsSent: number
-  languages: string[]
+const TRENDING_POST = {
+  user: "Maya from Queens",
+  initials: "MQ",
+  tag: "IRS Scam",
+  risk: "High",
+  story: "Almost had a heart attack reading this 😭 thought I was going to jail for taxes",
+  message:
+    "Final notice: your tax case will be sent to federal court unless you pay today with gift cards.",
+  reactionLine: "Why is the IRS asking for Apple gift cards 💀",
+  reactions: { hearts: 128, helpful: 74, warning: 39 },
 }
 
-type RiskFilter = "all" | RiskLevel
-
-const RISK_STYLES: Record<
-  RiskLevel,
-  {
-    label: string
-    badge: string
-    border: string
-    dot: string
-    glow: string
-    icon: ComponentType<{ className?: string }>
-  }
-> = {
-  scam: {
-    label: "Scam",
-    badge: "bg-red-500/15 text-red-200 ring-1 ring-red-400/35",
-    border: "border-red-400/40",
-    dot: "bg-red-400 shadow-[0_0_18px_rgba(248,113,113,0.75)]",
-    glow: "from-red-500/20",
-    icon: MailWarning,
-  },
-  suspicious: {
-    label: "Suspicious",
-    badge: "bg-amber-400/15 text-amber-100 ring-1 ring-amber-300/35",
-    border: "border-amber-300/35",
-    dot: "bg-amber-300 shadow-[0_0_18px_rgba(252,211,77,0.55)]",
-    glow: "from-amber-400/16",
-    icon: AlertTriangle,
-  },
-  safe: {
-    label: "Safe",
-    badge: "bg-emerald-400/15 text-emerald-100 ring-1 ring-emerald-300/35",
-    border: "border-emerald-300/30",
-    dot: "bg-emerald-300 shadow-[0_0_18px_rgba(110,231,183,0.45)]",
-    glow: "from-emerald-400/14",
-    icon: CheckCircle2,
-  },
-}
-
-const SCENARIOS = [
-  { id: "irs", label: "IRS Scam", detail: "Urgent government threat" },
-  { id: "phishing", label: "Phishing", detail: "Credential theft link" },
-  { id: "spanish", label: "Spanish Scam", detail: "Translated fraud alert" },
-  { id: "job", label: "Job Fraud", detail: "Fake hiring offer" },
+const ACTIVITY = [
+  { title: "IRS scam detected", level: "High", tone: "bg-rose-50 text-rose-600", icon: AlertTriangle },
+  { title: "Phishing link flagged", level: "Medium", tone: "bg-amber-50 text-amber-700", icon: TriangleAlert },
+  { title: "Job scam alert", level: "High", tone: "bg-rose-50 text-rose-600", icon: AlertTriangle },
 ]
 
-function StatCard({
-  label,
-  value,
-  tone,
-  icon: Icon,
-}: {
-  label: string
-  value: number | string
-  tone: string
-  icon: ComponentType<{ className?: string }>
-}) {
+const SAMPLE_MESSAGE =
+  "Final notice: your tax case will be sent to federal court unless you pay today with gift cards."
+
+function ProtectionStatus() {
+  const rows = [
+    ["Email connected", "Ready", CheckCircle2, "text-emerald-600 bg-emerald-50"],
+    ["Monitoring active", "Live", ShieldCheck, "text-sky-600 bg-sky-50"],
+    ["1 suspicious message today", "Watch", AlertTriangle, "text-amber-700 bg-amber-50"],
+  ] as const
+
   return (
-    <div className="group rounded-2xl border border-white/10 bg-white/[0.045] p-4 shadow-2xl shadow-black/20 transition hover:-translate-y-0.5 hover:border-white/20 hover:bg-white/[0.065]">
-      <div className="flex items-center justify-between gap-3">
-        <p className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">{label}</p>
-        <div className={`rounded-xl border border-white/10 p-2 ${tone}`}>
-          <Icon className="h-4 w-4" />
+    <section className="soft-card rounded-[28px] p-5">
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <h2 className="text-lg font-black text-slate-950">Protection Status</h2>
+          <p className="mt-1 text-sm text-slate-500">Mock demo mode, no account required.</p>
+        </div>
+        <div className="rounded-2xl bg-sky-50 p-3 text-sky-500">
+          <ShieldCheck className="h-5 w-5" />
         </div>
       </div>
-      <p className="mt-4 text-3xl font-semibold tracking-tight text-white">{value}</p>
-    </div>
+      <div className="mt-5 space-y-3">
+        {rows.map(([label, value, Icon, tone]) => (
+          <div key={label} className="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3">
+            <div className="flex items-center gap-3">
+              <span className={`rounded-full p-2 ${tone}`}>
+                <Icon className="h-4 w-4" />
+              </span>
+              <span className="text-sm font-bold text-slate-700">{label}</span>
+            </div>
+            <span className="text-xs font-black text-slate-400">{value}</span>
+          </div>
+        ))}
+      </div>
+    </section>
   )
 }
 
-function EmailSkeleton() {
+function ScamAlertCard({ message }: { message: string }) {
   return (
-    <div className="space-y-3">
-      {[0, 1, 2].map((item) => (
-        <div key={item} className="rounded-2xl border border-white/10 bg-white/[0.035] p-5">
-          <div className="flex animate-pulse items-center justify-between gap-4">
-            <div className="flex flex-1 items-center gap-3">
-              <div className="h-3 w-3 rounded-full bg-slate-700" />
-              <div className="w-full max-w-md space-y-2">
-                <div className="h-4 w-2/3 rounded bg-slate-800" />
-                <div className="h-3 w-1/3 rounded bg-slate-800" />
-              </div>
+    <section className="soft-card rounded-[28px] border-rose-100 p-5">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="text-xs font-black uppercase tracking-[0.16em] text-rose-500">Scam Alert</p>
+          <h2 className="mt-2 text-2xl font-black text-slate-950">High risk detected</h2>
+          <p className="mt-2 text-sm leading-6 text-slate-600">
+            This message uses urgency, legal threats, and gift card payment. Real agencies do not ask for gift cards.
+          </p>
+        </div>
+        <div className="rounded-3xl bg-gradient-to-br from-rose-100 to-pink-50 px-4 py-3 text-center text-rose-600">
+          <p className="text-3xl font-black">92%</p>
+          <p className="text-xs font-black">confidence</p>
+        </div>
+      </div>
+
+      <div className="mt-5 rounded-3xl bg-slate-50 p-4">
+        <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-400">Checked message</p>
+        <p className="mt-2 text-sm leading-6 text-slate-700">“{message || SAMPLE_MESSAGE}”</p>
+      </div>
+
+      <div className="mt-5 grid gap-3 sm:grid-cols-2">
+        {["Do not respond", "Do not click links", "Do not send money", "Ask someone you trust"].map((step) => (
+          <div key={step} className="rounded-2xl bg-white p-3 text-sm font-bold text-slate-700 shadow-sm ring-1 ring-slate-100">
+            {step}
+          </div>
+        ))}
+      </div>
+    </section>
+  )
+}
+
+function TrendingScamCard() {
+  return (
+    <article className="social-card overflow-hidden rounded-[32px]">
+      <div className="bg-gradient-to-br from-pink-50 via-white to-sky-50 p-5 sm:p-6">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <div className="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1 text-xs font-black text-rose-500 shadow-sm">
+              🔥 Trending in your community
             </div>
-            <div className="hidden h-7 w-24 rounded-full bg-slate-800 sm:block" />
+            <h2 className="mt-3 text-xl font-black tracking-tight text-slate-950">Trending Scam Today</h2>
+          </div>
+          <div className="flex flex-col items-end gap-2">
+            <span className="rounded-full bg-rose-500 px-3 py-1 text-xs font-black text-white shadow-lg shadow-rose-100">
+              THIS IS A SCAM
+            </span>
+            <span className="rounded-full bg-white px-3 py-1 text-xs font-black text-rose-600 shadow-sm">
+              Risk: {TRENDING_POST.risk}
+            </span>
           </div>
         </div>
-      ))}
-    </div>
-  )
-}
 
-function EmptyState({ onSimulate }: { onSimulate: () => void }) {
-  return (
-    <div className="rounded-3xl border border-dashed border-white/15 bg-white/[0.035] px-6 py-12 text-center">
-      <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border border-cyan-300/20 bg-cyan-300/10 text-cyan-200">
-        <Inbox className="h-7 w-7" />
-      </div>
-      <h2 className="mt-5 text-xl font-semibold text-white">No emails processed yet</h2>
-      <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-slate-400">
-        Run a sample through the pipeline to show judges how TrustLayer classifies messages, records the analysis, and updates the dashboard.
-      </p>
-      <button
-        onClick={onSimulate}
-        className="mt-6 inline-flex items-center gap-2 rounded-xl bg-cyan-400 px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-cyan-300"
-      >
-        <Play className="h-4 w-4" />
-        Run first simulation
-      </button>
-    </div>
-  )
-}
+        <div className="mt-5 flex gap-3">
+          <div className="flex h-13 w-13 shrink-0 items-center justify-center rounded-3xl bg-gradient-to-br from-pink-300 to-sky-300 font-black text-white shadow-lg shadow-pink-100">
+            {TRENDING_POST.initials}
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="text-sm font-black text-slate-950">{TRENDING_POST.user}</p>
+              <span className="rounded-full bg-white px-2.5 py-1 text-xs font-black text-slate-500 shadow-sm">just now</span>
+            </div>
+            <p className="mt-2 text-sm leading-6 text-slate-600">{TRENDING_POST.story}</p>
 
-function EmailCard({ item }: { item: EmailWithAnalysis }) {
-  const [expanded, setExpanded] = useState(false)
-  const analysis = item.analysis
-  const risk = analysis ? RISK_STYLES[analysis.risk_level] : null
-  const RiskIcon = risk?.icon
+            <div className="mt-4 rounded-[26px] border border-rose-100 bg-white/85 p-4 shadow-sm">
+              <p className="text-xs font-black uppercase tracking-[0.14em] text-rose-400">Scam message</p>
+              <p className="mt-2 text-[15px] leading-7 text-slate-800">“{TRENDING_POST.message}”</p>
+            </div>
 
-  return (
-    <article
-      className={`group relative overflow-hidden rounded-2xl border bg-slate-950/70 shadow-2xl shadow-black/20 transition duration-200 hover:-translate-y-0.5 hover:bg-slate-900/80 ${
-        risk ? risk.border : "border-white/10"
-      }`}
-    >
-      {risk && <div className={`pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-b ${risk.glow} to-transparent opacity-80`} />}
-      <button
-        type="button"
-        onClick={() => setExpanded((value) => !value)}
-        className="relative grid w-full grid-cols-[1fr_auto] items-center gap-4 p-4 text-left sm:p-5"
-      >
-        <div className="flex min-w-0 items-center gap-3">
-          <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${risk?.dot ?? "bg-slate-600"} ${analysis?.risk_level === "scam" ? "animate-pulse" : ""}`} />
-          <div className="min-w-0">
-            <p className="truncate text-sm font-semibold text-slate-100 sm:text-base">{item.subject || "(no subject)"}</p>
-            <p className="mt-1 truncate text-xs text-slate-500">
-              {item.sender} - {new Date(item.received_at).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+            <p className="mt-3 rounded-3xl bg-slate-50 px-4 py-3 text-sm font-semibold leading-6 text-slate-600">
+              {TRENDING_POST.reactionLine}
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2 sm:gap-3">
-          {item.language_name && item.detected_language !== "en" && (
-            <span className="hidden rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-xs text-slate-400 sm:inline-flex">
-              {item.language_name}
-            </span>
-          )}
-          {analysis && risk && RiskIcon && (
-            <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-bold ${risk.badge}`}>
-              <RiskIcon className="h-3.5 w-3.5" />
-              {risk.label}
-            </span>
-          )}
-          {analysis && <span className="hidden min-w-10 text-right text-sm font-bold text-white sm:inline">{analysis.final_score}</span>}
-          {expanded ? <ChevronUp className="h-4 w-4 text-slate-500" /> : <ChevronDown className="h-4 w-4 text-slate-500" />}
-        </div>
-      </button>
+      </div>
 
-      {expanded && analysis && (
-        <div className="relative border-t border-white/10 bg-black/20 px-4 py-5 sm:px-5">
-          <div className="grid gap-3 sm:grid-cols-3">
-            {[
-              ["Rule Score", analysis.rule_score, "text-cyan-200"],
-              ["AI Score", analysis.ai_score, "text-violet-200"],
-              ["Final Score", analysis.final_score, "text-white"],
-            ].map(([label, value, color]) => (
-              <div key={label} className="rounded-2xl border border-white/10 bg-white/[0.045] p-4">
-                <p className={`text-2xl font-semibold ${color}`}>{value}</p>
-                <p className="mt-1 text-xs uppercase tracking-[0.16em] text-slate-500">{label}</p>
-              </div>
-            ))}
-          </div>
-
-          <div className="mt-5 grid gap-5 lg:grid-cols-[1fr_1fr]">
-            <section>
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Analysis</p>
-              <p className="mt-2 text-sm leading-6 text-slate-300">{analysis.explanation}</p>
-              <p className="mt-3 inline-flex rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs text-slate-300">
-                {analysis.scam_type || "General fraud pattern"}
-              </p>
-            </section>
-
-            <section>
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Recommended Actions</p>
-              <ol className="mt-2 space-y-2">
-                {analysis.actions.map((action, index) => (
-                  <li key={action} className="flex items-start gap-2 text-sm leading-6 text-slate-300">
-                    <span className="mt-1 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-cyan-300/15 text-xs font-bold text-cyan-200">
-                      {index + 1}
-                    </span>
-                    <span>{action}</span>
-                  </li>
-                ))}
-              </ol>
-            </section>
-          </div>
-
-          {analysis.red_flags.length > 0 && (
-            <section className="mt-5">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Red Flags</p>
-              <div className="mt-3 flex flex-wrap gap-2">
-                {analysis.red_flags.map((flag) => (
-                  <span key={flag} className="rounded-full border border-red-400/20 bg-red-400/10 px-3 py-1 text-xs text-red-100">
-                    {flag}
-                  </span>
-                ))}
-              </div>
-            </section>
-          )}
-
-          {analysis.alert_sent && (
-            <div className="mt-5 inline-flex items-center gap-2 rounded-full border border-orange-300/20 bg-orange-300/10 px-3 py-1.5 text-xs font-medium text-orange-100">
-              <Bell className="h-3.5 w-3.5" />
-              Alert email sent
-            </div>
-          )}
-        </div>
-      )}
+      <div className="flex flex-wrap items-center gap-3 border-t border-slate-100 bg-white px-5 py-4 text-sm font-bold text-slate-500 sm:px-6">
+        <span className="rounded-full bg-rose-50 px-3 py-2 text-xs font-black text-rose-500">{TRENDING_POST.tag}</span>
+        <button type="button" className="inline-flex items-center gap-1 rounded-full bg-pink-50 px-3 py-2 text-pink-500 transition hover:-translate-y-0.5">
+          <Heart className="h-4 w-4" /> {TRENDING_POST.reactions.hearts}
+        </button>
+        <button type="button" className="inline-flex items-center gap-1 rounded-full bg-sky-50 px-3 py-2 text-sky-500 transition hover:-translate-y-0.5">
+          <ThumbsUp className="h-4 w-4" /> {TRENDING_POST.reactions.helpful}
+        </button>
+        <button type="button" className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-3 py-2 text-amber-600 transition hover:-translate-y-0.5">
+          <TriangleAlert className="h-4 w-4" /> {TRENDING_POST.reactions.warning}
+        </button>
+        <Link href="/social" className="ml-auto rounded-full bg-slate-950 px-4 py-2 text-xs text-white transition hover:-translate-y-0.5">
+          View More
+        </Link>
+      </div>
     </article>
   )
 }
 
-export default function Dashboard() {
-  const router = useRouter()
-  const supabase = createClient()
-  const [user, setUser] = useState<User | null>(null)
-  const [emails, setEmails] = useState<EmailWithAnalysis[]>([])
-  const [stats, setStats] = useState<Stats>({ total: 0, fraud: 0, suspicious: 0, alertsSent: 0, languages: [] })
-  const [filter, setFilter] = useState<RiskFilter>("all")
-  const [simulating, setSimulating] = useState(false)
-  const [initialLoading, setInitialLoading] = useState(true)
-  const [simScenario, setSimScenario] = useState("irs")
-  const [lastSimResult, setLastSimResult] = useState<string | null>(null)
-
-  const fetchEmails = useCallback(async () => {
-    const res = await fetch("/api/emails")
-    if (res.ok) {
-      const data = await res.json()
-      setEmails(data.emails)
-      setStats(data.stats)
-      setUser(data.user || null)
-    } else {
-      setUser(null)
-    }
-    setInitialLoading(false)
-  }, [])
-
-  useEffect(() => {
-    const timeout = setTimeout(() => {
-      void fetchEmails()
-    }, 0)
-    // Only poll if we are logged in
-    const interval = setInterval(() => {
-      if (user) {
-        void fetchEmails()
-      }
-    }, 4000)
-    return () => {
-      clearTimeout(timeout)
-      clearInterval(interval)
-    }
-  }, [fetchEmails, user])
-
-  async function simulate() {
-    setSimulating(true)
-    setLastSimResult(null)
-    try {
-      const res = await fetch("/api/simulate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ scenario: simScenario }),
-      })
-      const data = await res.json()
-      if (res.ok) {
-        setLastSimResult(`Simulation complete - ${data.analysis.risk_level.toUpperCase()} score ${data.analysis.final_score}`)
-        await fetchEmails()
-      } else {
-        setLastSimResult(data.error ?? "Simulation failed")
-      }
-    } catch {
-      setLastSimResult("Network error")
-    } finally {
-      setSimulating(false)
-    }
-  }
-
-  const filtered = filter === "all" ? emails : emails.filter((email) => email.analysis?.risk_level === filter)
-  const caughtRate = stats.total > 0 ? Math.round(((stats.fraud + stats.suspicious) / stats.total) * 100) : 0
-
-  if (initialLoading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-950">
-        <Loader2 className="h-8 w-8 animate-spin text-cyan-400" />
+function RecentActivity() {
+  return (
+    <section className="soft-card rounded-[28px] p-5">
+      <div className="flex items-center gap-2">
+        <Activity className="h-5 w-5 text-sky-500" />
+        <h2 className="text-lg font-black text-slate-950">Recent Activity</h2>
       </div>
-    )
+      <div className="mt-5 space-y-3">
+        {ACTIVITY.map(({ title, level, tone, icon: Icon }) => (
+          <div key={title} className="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3">
+            <div className="flex items-center gap-3">
+              <span className={`rounded-full p-2 ${tone}`}>
+                <Icon className="h-4 w-4" />
+              </span>
+              <p className="text-sm font-bold text-slate-700">{title}</p>
+            </div>
+            <span className={`rounded-full px-3 py-1 text-xs font-black ${tone}`}>{level}</span>
+          </div>
+        ))}
+      </div>
+    </section>
+  )
+}
+
+export default function Home() {
+  const [message, setMessage] = useState(SAMPLE_MESSAGE)
+  const [analyzing, setAnalyzing] = useState(false)
+  const [showResult, setShowResult] = useState(true)
+
+  function analyze() {
+    setAnalyzing(true)
+    window.setTimeout(() => {
+      setShowResult(true)
+      setAnalyzing(false)
+    }, 450)
   }
 
-  if (!user) {
-    return (
-      <main className="flex min-h-screen flex-col items-center justify-center bg-gray-950 px-4 text-center">
-        <div className="mb-8 inline-flex items-center justify-center rounded-2xl border border-cyan-500/30 bg-cyan-500/10 p-4">
-          <ShieldCheck className="h-12 w-12 text-cyan-400" />
-        </div>
-        <h1 className="max-w-4xl text-4xl font-bold tracking-tight text-white sm:text-6xl">
-          Catch fraud before it reaches someone vulnerable.
-        </h1>
-        <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-400">
-          TrustLayer seamlessly integrates with your email to automatically detect, translate, and explain scams in your native language before you fall victim.
-        </p>
-        <div className="mt-10 flex items-center justify-center gap-x-6">
-          <button
-            onClick={() => router.push("/login")}
-            className="rounded-xl bg-cyan-400 px-6 py-3.5 text-sm font-semibold text-slate-950 shadow-sm transition hover:bg-cyan-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-400"
-          >
-            Get started
-          </button>
-          <a href="#" className="text-sm font-semibold leading-6 text-white hover:text-cyan-300 transition">
-            Learn more <span aria-hidden="true">→</span>
-          </a>
-        </div>
-      </main>
-    )
+  function simulate() {
+    setMessage(SAMPLE_MESSAGE)
+    analyze()
   }
 
   return (
-    <main className="mx-auto flex w-full max-w-6xl flex-col gap-7 px-4 py-8 sm:px-6 lg:px-8">
-      <section className="overflow-hidden rounded-3xl border border-white/10 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.16),transparent_32%),linear-gradient(135deg,rgba(15,23,42,0.95),rgba(2,6,23,0.92))] p-6 shadow-2xl shadow-black/30 sm:p-8">
-        <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-          <div className="max-w-2xl">
-            <div className="inline-flex items-center gap-2 rounded-full border border-cyan-300/20 bg-cyan-300/10 px-3 py-1 text-xs font-medium text-cyan-100">
-              <ShieldCheck className="h-3.5 w-3.5" />
-              Live email defense dashboard
-            </div>
-            <h1 className="mt-5 text-3xl font-semibold tracking-tight text-white sm:text-5xl">Catch fraud before it reaches someone vulnerable.</h1>
-            <p className="mt-4 max-w-xl text-sm leading-6 text-slate-400 sm:text-base">
-              TrustLayer scans forwarded emails, explains the risk in plain language, and sends alerts when a scam needs immediate attention.
-            </p>
-            {user && (
-              <div className="mt-6 rounded-xl border border-white/10 bg-black/20 p-4">
-                <p className="text-sm font-medium text-slate-300">Your forwarding address:</p>
-                <div className="mt-2 flex items-center justify-between gap-4 rounded-lg bg-black/40 px-4 py-2">
-                  <code className="text-sm text-cyan-300">{user.forwarding_address}</code>
-                  <button
-                    onClick={async () => {
-                      await supabase.auth.signOut()
-                      router.push("/login")
-                    }}
-                    className="text-xs text-slate-500 transition hover:text-white"
-                  >
-                    Sign Out
-                  </button>
-                </div>
-              </div>
-            )}
+    <main className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
+      <section className="grid items-center gap-8 py-8 lg:grid-cols-[1.05fr_0.95fr]">
+        <div>
+          <div className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 text-xs font-bold text-sky-600 shadow-sm ring-1 ring-sky-100">
+            <Sparkles className="h-3.5 w-3.5" />
+            community-powered scam protection
           </div>
-          <div className="grid min-w-56 grid-cols-2 gap-3 rounded-2xl border border-white/10 bg-black/20 p-3">
-            <div>
-              <p className="text-3xl font-semibold text-white">{caughtRate}%</p>
-              <p className="text-xs text-slate-500">flag rate</p>
-            </div>
-            <div>
-              <p className="text-3xl font-semibold text-cyan-200">{stats.languages.length || 1}</p>
-              <p className="text-xs text-slate-500">languages</p>
-            </div>
+          <h1 className="mt-5 max-w-3xl text-4xl font-black tracking-tight text-slate-950 sm:text-6xl">
+            Catch scams before they reach someone vulnerable
+          </h1>
+          <p className="mt-5 max-w-2xl text-base leading-8 text-slate-600 sm:text-lg">
+            Paste a suspicious message, get a plain-language risk read, and share patterns with the people who need the warning most.
+          </p>
+          <div className="mt-6 flex flex-wrap gap-3 text-sm font-semibold text-slate-600">
+            <span className="rounded-full bg-white px-4 py-2 shadow-sm">multilingual support</span>
+            <span className="rounded-full bg-white px-4 py-2 shadow-sm">community alerts</span>
+            <span className="rounded-full bg-white px-4 py-2 shadow-sm">no login needed</span>
           </div>
         </div>
+        <ProtectionStatus />
       </section>
 
-      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="Emails Scanned" value={stats.total} tone="bg-cyan-300/10 text-cyan-200" icon={Inbox} />
-        <StatCard label="Scams Caught" value={stats.fraud} tone="bg-red-400/10 text-red-200" icon={MailWarning} />
-        <StatCard label="Suspicious" value={stats.suspicious} tone="bg-amber-300/10 text-amber-100" icon={AlertTriangle} />
-        <StatCard label="Alerts Sent" value={stats.alertsSent} tone="bg-violet-300/10 text-violet-100" icon={Bell} />
-      </section>
-
-      <section className="grid gap-6 lg:grid-cols-[0.95fr_1.4fr]">
-        <div className="rounded-3xl border border-white/10 bg-white/[0.045] p-5 shadow-2xl shadow-black/20">
+      <section id="analyze" className="grid gap-6 lg:grid-cols-[1.02fr_0.98fr]">
+        <div className="soft-card rounded-[32px] p-5 sm:p-6">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <h2 className="text-lg font-semibold text-white">Simulate Email</h2>
-              <p className="mt-1 text-sm leading-6 text-slate-400">Run a prepared case through the full pipeline and refresh the feed.</p>
+              <h2 className="text-xl font-black text-slate-950">Quick Check</h2>
+              <p className="mt-1 text-sm text-slate-500">Paste any text, email, DM, or call script.</p>
             </div>
-            <span className="rounded-full border border-emerald-300/20 bg-emerald-300/10 px-3 py-1 text-xs font-medium text-emerald-100">
-              Live pipeline
-            </span>
+            <div className="rounded-2xl bg-sky-50 p-3 text-sky-500">
+              <Search className="h-5 w-5" />
+            </div>
           </div>
-
-          <div className="mt-5 grid gap-2 sm:grid-cols-2">
-            {SCENARIOS.map((scenario) => (
-              <button
-                key={scenario.id}
-                type="button"
-                onClick={() => setSimScenario(scenario.id)}
-                className={`rounded-2xl border p-4 text-left transition hover:-translate-y-0.5 ${
-                  simScenario === scenario.id
-                    ? "border-cyan-300/50 bg-cyan-300/10 text-white"
-                    : "border-white/10 bg-black/15 text-slate-400 hover:border-white/20"
-                }`}
-              >
-                <p className="text-sm font-semibold">{scenario.label}</p>
-                <p className="mt-1 text-xs text-slate-500">{scenario.detail}</p>
-              </button>
-            ))}
-          </div>
-
+          <textarea
+            value={message}
+            onChange={(event) => {
+              setMessage(event.target.value)
+              setShowResult(false)
+            }}
+            rows={7}
+            placeholder="Paste a suspicious message here..."
+            className="mt-5 w-full resize-none rounded-[26px] border border-slate-200 bg-slate-50/80 p-4 text-sm leading-6 text-slate-800 shadow-inner outline-none transition placeholder:text-slate-400 focus:border-sky-200 focus:bg-white"
+          />
           <button
             type="button"
-            onClick={simulate}
-            disabled={simulating}
-            className="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl bg-cyan-400 px-4 py-3 text-sm font-bold text-slate-950 transition hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-50"
+            onClick={analyze}
+            disabled={analyzing || !message.trim()}
+            className="mt-5 flex w-full items-center justify-center gap-2 rounded-[22px] bg-sky-500 px-5 py-4 text-sm font-black text-white shadow-xl shadow-sky-200 transition hover:-translate-y-0.5 hover:bg-sky-600 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {simulating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
-            {simulating ? "Running pipeline..." : "Run Simulation"}
+            {analyzing ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
+            {analyzing ? "Analyzing..." : "Analyze"}
           </button>
-
-          {lastSimResult && (
-            <div className="mt-4 rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-slate-300">
-              {lastSimResult}
-            </div>
-          )}
         </div>
 
-        <div className="min-w-0">
-          <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        {showResult ? (
+          <ScamAlertCard message={message} />
+        ) : (
+          <div className="soft-card flex min-h-80 items-center justify-center rounded-[32px] p-8 text-center">
             <div>
-              <h2 className="text-lg font-semibold text-white">Processed Emails</h2>
-              <p className="text-sm text-slate-500">{filtered.length} visible of {emails.length} total</p>
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 text-xs font-medium uppercase tracking-[0.16em] text-slate-500">
-                <Filter className="h-3.5 w-3.5" />
-                Filter
-              </span>
-              {(["all", "scam", "suspicious", "safe"] as RiskFilter[]).map((value) => (
-                <button
-                  key={value}
-                  type="button"
-                  onClick={() => setFilter(value)}
-                  className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
-                    filter === value
-                      ? "border-cyan-300/50 bg-cyan-300/10 text-cyan-100"
-                      : "border-white/10 text-slate-500 hover:border-white/20 hover:text-slate-300"
-                  }`}
-                >
-                  {value === "all" ? "All" : RISK_STYLES[value].label}
-                </button>
-              ))}
+              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-3xl bg-sky-50 text-sky-500">
+                <MessageCircle className="h-7 w-7" />
+              </div>
+              <h2 className="mt-5 text-xl font-black text-slate-950">Ready when you are</h2>
+              <p className="mt-2 text-sm leading-6 text-slate-500">Run the check to see a premium scam alert card.</p>
             </div>
           </div>
-
-          {initialLoading ? (
-            <EmailSkeleton />
-          ) : filtered.length === 0 ? (
-            <EmptyState onSimulate={simulate} />
-          ) : (
-            <div className="space-y-3">
-              {filtered.map((item) => (
-                <EmailCard key={item.id} item={item} />
-              ))}
-            </div>
-          )}
-        </div>
+        )}
       </section>
+
+      <section className="mt-6 grid gap-6 lg:grid-cols-[1fr_0.75fr]">
+        <TrendingScamCard />
+        <RecentActivity />
+      </section>
+
+      <FloatingActionButton onSimulate={simulate} />
     </main>
   )
 }
