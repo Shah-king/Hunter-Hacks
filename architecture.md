@@ -1,4 +1,4 @@
-# TrustLayer — System Architecture (v2)
+# TrustLayer — System Architecture (24-Hour Build)
 
 ---
 
@@ -8,7 +8,7 @@
 ┌────────────────────────────────────────────────────────────────┐
 │                     FRONTEND (Next.js 14)                       │
 │   Tabs: [ SMS ] [ Email ] [ Call ] [ Social ]  Lang Selector   │
-│   Pages: Detection UI  |  TrustWall Feed  |  Leaderboard       │
+│   Pages: Detection UI  |  TrustWall Feed                       │
 └───────────────────────┬────────────────────────────────────────┘
                         │ POST /api/analyze
                         │ { text, channel, language }
@@ -16,52 +16,27 @@
 ┌────────────────────────────────────────────────────────────────┐
 │                  BACKEND (Next.js API Routes)                   │
 │  1. Validates input                                             │
-│  2. Routes to ML microservice based on channel                 │
-│  3. Combines ML score + red flags                              │
-│  4. Calls Claude for explanation + translation                 │
-│  5. Returns unified result to frontend                         │
-└──────────┬─────────────────────────────┬──────────────────────┘
-           │                             │
-           ▼                             ▼
-┌──────────────────────┐     ┌───────────────────────────┐
-│   ML Microservice    │     │   Claude API (Sonnet 4.5)  │
-│   Python + FastAPI   │     │   - Explanation layer      │
-│                      │     │   - Multilingual output    │
-│   Models (.pkl):     │     │   - Action guidance        │
-│   - phishing         │     │   - Red flag labeling      │
-│   - employment_fraud │     └───────────────────────────┘
-│   - social_eng       │
-│   - bec              │
-│                      │
-│   Returns:           │
-│   { score, flags }   │
-└──────────────────────┘
-           │
-           ▼
-┌──────────────────────────────────────────────────────────────┐
-│                    COMMUNITY LAYER                             │
-│   TrustWall — scam posts + reactions + points + badges        │
-└──────────────────────────────────────────────────────────────┘
+│  2. Injects channel-specific context into system prompt        │
+│  3. Calls OpenAI GPT-4o with structured output                 │
+│  4. Returns unified result to frontend                         │
+└───────────────────────────────┬────────────────────────────────┘
+                                │
+                                ▼
+                  ┌─────────────────────────────┐
+                  │     OpenAI GPT-4o API        │
+                  │  - Fraud detection           │
+                  │  - Confidence scoring        │
+                  │  - Red flag extraction       │
+                  │  - Multilingual explanation  │
+                  │  - Action guidance           │
+                  └─────────────────────────────┘
 ```
+
+No ML microservice. No Python service. No separate translation API. One API call does everything.
 
 ---
 
-## 2. Model Routing Logic
-
-Channel selection in the UI determines which ML model(s) are called:
-
-```
-channel: "email"   → phishing_model + bec_model  (averaged confidence)
-channel: "sms"     → social_engineering_model
-channel: "call"    → social_engineering_model
-channel: "social"  → phishing_model
-```
-
-For hackathon demo: only `phishing_model` is required. Others are architecture placeholders.
-
----
-
-## 3. Full Data Flow (End-to-End)
+## 2. Full Data Flow (End-to-End)
 
 ```
 User pastes message, selects Email tab + Chinese output
@@ -71,93 +46,39 @@ POST /api/analyze
 { text: "...", channel: "email", language: "zh" }
                 │
                 ▼
-Backend → ML Microservice
-POST ml-service/predict
-{ text: "...", model_type: ["phishing", "bec"] }
+Backend builds GPT-4o prompt:
+  - System prompt with email scam context
+  - User message as content
+  - Target language: Chinese
+  - Structured JSON output schema
                 │
                 ▼
-ML returns:
-{ score: 0.94, red_flags: ["spoofed domain", "urgent wire transfer"] }
-                │
-                ▼
-Backend → Claude API
-"Given ML score 0.94 and red flags [...], explain in Chinese + give actions"
-                │
-                ▼
-Claude returns:
+GPT-4o returns structured JSON:
 {
+  risk_level: "scam",
+  confidence: 94,
+  scam_type: "Phishing",
+  red_flags: ["spoofed domain", "urgent wire transfer request"],
   explanation: "这是一封钓鱼邮件。该域名是伪造的...",
   actions: ["不要点击任何链接", "向FTC举报", ...]
 }
                 │
                 ▼
-Backend combines and returns:
-{
-  risk_level: "scam",
-  confidence: 94,
-  model_used: "phishing",
-  red_flags: ["spoofed domain", "urgent wire transfer"],
-  explanation: "这是一封钓鱼邮件...",
-  actions: [...]
-}
+Backend validates + returns to frontend
                 │
                 ▼
 Frontend renders:
   - Red badge: SCAM 94%
-  - Input text with red_flags highlighted inline
+  - Original message with red_flags highlighted inline
   - Chinese explanation
-  - Action steps in Chinese
+  - Chinese action steps
 ```
 
-Total round trip: **3–5 seconds**
+Total round trip: **2–4 seconds**
 
 ---
 
-## 4. ML Microservice
-
-**Runtime:** Python 3.11 + FastAPI
-**Deployment:** Railway or Render (free tier) — or localhost + ngrok for demo fallback
-
-### Endpoint
-
-```
-POST /predict
-{
-  "text": "string",
-  "model_type": ["phishing"] | ["social_engineering"] | ["phishing", "bec"]
-}
-```
-
-### Response
-
-```json
-{
-  "score": 0.94,
-  "risk_level": "scam",
-  "red_flags": ["spoofed domain", "urgent payment request", "impersonates authority"],
-  "models_used": ["phishing"]
-}
-```
-
-### Model Loading
-
-```python
-# predict.py — models loaded once at startup, not per-request
-import joblib
-
-MODELS = {
-    "phishing": joblib.load("models/phishing_model.pkl"),
-    "employment_fraud": joblib.load("models/employment_fraud.pkl"),
-    "social_engineering": joblib.load("models/social_engineering.pkl"),
-    "bec": joblib.load("models/bec_model.pkl"),
-}
-```
-
-Model source: `vaibhavnsingh07/fraud-detection-models` on Hugging Face
-
----
-
-## 5. Backend API
+## 3. Backend API
 
 ### `POST /api/analyze`
 
@@ -175,7 +96,6 @@ Model source: `vaibhavnsingh07/fraud-detection-models` on Hugging Face
 {
   "risk_level": "scam",
   "confidence": 96,
-  "model_used": "social_engineering",
   "scam_type": "Government Impersonation",
   "red_flags": [
     "Urgency pressure — 'immediately'",
@@ -201,125 +121,198 @@ Model source: `vaibhavnsingh07/fraud-detection-models` on Hugging Face
 { "error": "Analysis failed. Please try again." }
 ```
 
-### Backend Orchestration Logic
+### Backend Implementation
 
 ```typescript
 // /app/api/analyze/route.ts
+import OpenAI from "openai"
+import { channelContext } from "@/lib/channelContext"
+
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+
 export async function POST(req: Request) {
   const { text, channel, language } = await req.json()
 
-  // 1. Validate
-  if (!text || text.length > 5000) return error(400)
+  if (!text || text.length > 5000) {
+    return Response.json({ error: "text is required and must be under 5000 characters" }, { status: 400 })
+  }
 
-  // 2. Route to correct models
-  const modelTypes = channelToModels(channel)
-  // e.g. "email" → ["phishing", "bec"]
+  const systemPrompt = buildSystemPrompt(channel, language)
 
-  // 3. Call ML microservice
-  const mlResult = await fetch(`${ML_SERVICE_URL}/predict`, {
-    method: "POST",
-    body: JSON.stringify({ text, model_type: modelTypes })
+  const completion = await openai.chat.completions.create({
+    model: "gpt-4o",
+    response_format: { type: "json_object" },
+    messages: [
+      { role: "system", content: systemPrompt },
+      { role: "user", content: text }
+    ]
   })
-  const { score, red_flags } = await mlResult.json()
 
-  // 4. Call Claude for explanation + translation
-  const claudeResult = await getExplanation({ text, score, red_flags, language })
+  const result = JSON.parse(completion.choices[0].message.content!)
 
-  // 5. Return unified result
-  return Response.json({
-    risk_level: scoreToRisk(score),
-    confidence: Math.round(score * 100),
-    red_flags,
-    ...claudeResult
-  })
+  return Response.json(result)
 }
 ```
 
 ---
 
-## 6. Claude Integration
+## 4. OpenAI Prompt Design
 
-Claude does NOT do detection — that's the ML model's job. Claude's role:
+### System Prompt Builder
 
-1. Receive: ML score + red flags + original text + target language
-2. Generate: plain-language explanation of *why* it's a scam, *in the target language*
-3. Generate: 3–5 specific action steps, *in the target language*
-4. Label: map red flags to human-readable phrases for UI highlighting
+```typescript
+// lib/openai.ts
+export function buildSystemPrompt(channel: string, language: string): string {
+  return `
+You are TrustLayer, an AI fraud detection system protecting immigrants and international students.
 
-### System Prompt (core logic)
+CHANNEL CONTEXT:
+${channelContext[channel]}
 
+YOUR TASK:
+Analyze the user's message and return a JSON object with this exact structure:
+{
+  "risk_level": "scam" | "suspicious" | "safe",
+  "confidence": number between 0-100,
+  "scam_type": string (e.g. "Government Impersonation", "Phishing", "Job Fraud", "Safe Message"),
+  "red_flags": string[] (specific phrases or patterns found — max 5, empty array if safe),
+  "explanation": string (2-3 sentences in ${language} explaining WHY this is or isn't a scam),
+  "actions": string[] (3-5 action steps in ${language}, empty array if safe)
+}
+
+CLASSIFICATION RULES:
+- "scam": 2+ strong signals or clear malicious intent
+- "suspicious": 1 signal or ambiguous intent
+- "safe": no signals detected
+
+SCAM SIGNALS TO DETECT:
+- Urgency: "act now", "immediately", "last warning", "account suspended"
+- Authority impersonation: IRS, SSA, ICE, immigration, bank fraud departments
+- Unusual payment: gift cards, wire transfer, crypto, Western Union, Zelle
+- Threats: arrest, warrant, deportation, lawsuit
+- Too-good-to-be-true: unrealistic job offers, lottery winnings, free visa
+- Suspicious links or spoofed domains
+
+IMPORTANT:
+- Write explanation and actions in ${language} only
+- Reference specific phrases found in the message
+- Use plain language — the reader may be unfamiliar with US systems
+- Return valid JSON only, no extra text
+`
+}
 ```
-You are TrustLayer's explanation engine. A fraud detection ML model has already 
-classified this message with a confidence score and red flags.
 
-Your job:
-1. Write a 2–3 sentence explanation of WHY this is a scam in {language}
-2. List 3–5 specific action steps in {language}
-3. Do NOT re-classify — trust the ML score
-4. Use plain language appropriate for someone unfamiliar with US systems
-5. Reference the specific red flags found: {red_flags}
+### Channel Context Map
 
-Output as JSON: { explanation, actions }
+```typescript
+// lib/channelContext.ts
+export const channelContext: Record<string, string> = {
+  sms: `
+    This is an SMS/text message. Common scams:
+    - Fake USPS/UPS delivery alerts with phishing links
+    - Prize winning notifications
+    - Bank fraud alerts asking to call back
+    - IRS/SSA suspension threats
+    - Verification codes from unknown sources
+  `,
+  email: `
+    This is an email message. Common scams:
+    - Gmail/Outlook phishing with spoofed sender domains
+    - Fake invoice or payment requests
+    - Business email compromise (boss impersonation)
+    - Account verification emails with malicious links
+    - IRS tax refund or audit notices
+  `,
+  call: `
+    This is a phone call script or voicemail transcript. Common scams:
+    - IRS agents threatening arrest for unpaid taxes
+    - Social Security Administration suspending SSN
+    - Immigration officers threatening deportation
+    - Bank fraud departments asking for account info
+    - Tech support requesting remote access
+  `,
+  social: `
+    This is a social media message or post. Common scams:
+    - Instagram/Facebook giveaway scams requiring personal info
+    - Fake job offers sent via DM
+    - Crypto investment opportunities
+    - Romance scams building trust over time
+    - Fake influencer sponsorship opportunities
+  `
+}
 ```
 
 ---
 
-## 7. Frontend Architecture
+## 5. Frontend Architecture
 
 ### Pages
 
 | Route | Purpose |
 |-------|---------|
 | `/` | Main detection UI — tabs + analysis results |
-| `/trustwall` | Community scam feed |
-| `/leaderboard` | Top contributors |
+| `/trustwall` | Community scam feed (hardcoded data) |
 
 ### Component Tree
 
 ```
 app/page.tsx
 ├── <ChannelTabs />              ← SMS / Email / Call / Social
-├── <MessageInput />             ← Textarea + char count
+├── <MessageInput />             ← Textarea + char count + example loader
 ├── <LanguageSelector />         ← en / zh / es / bn / ht
-├── <AnalyzeButton />            ← Triggers POST, shows spinner
+├── <AnalyzeButton />            ← POST trigger + loading spinner
 └── <ResultsPanel />             ← Hidden until analysis complete
     ├── <RiskBadge />            ← SCAM / SUSPICIOUS / SAFE + confidence %
-    ├── <HighlightedText />      ← Original message with red flags underlined
+    ├── <HighlightedText />      ← Original message, red flags underlined in red
     ├── <Explanation />          ← 2–3 sentences in selected language
     └── <ActionSteps />          ← Numbered list in selected language
 
 app/trustwall/page.tsx
 ├── <TrustWallFeed />
-│   └── <ScamPost />[]           ← username, snippet, channel tag, reactions
+│   └── <ScamPost />[]           ← username, snippet, channel, reactions
 └── <ReactionButtons />          ← "I got this too" / "Scam confirmed"
 ```
 
 ### UI States
 
 ```
-input → loading → results
+input → loading → results → (optional) share to TrustWall
   │         │         │
-  │    spinner +    RiskBadge
-  │    "Analyzing   HighlightedText
-  │     with ML     Explanation
-  │     models..."  ActionSteps
-  │
-  └── error → friendly error message + retry button
+  │    "Analyzing    RiskBadge (pulse animation on Scam)
+  │     with AI..."  HighlightedText
+  │                  Explanation
+  │                  ActionSteps
+  └── error → "Analysis failed. Please try again." + retry
 ```
 
 ---
 
-## 8. TrustWall Data Model
-
-For demo: hardcoded JSON. For production: Supabase or PlanetScale.
+## 6. Key Types
 
 ```typescript
+// lib/types.ts
+
+type RiskLevel = "scam" | "suspicious" | "safe"
+
+type Channel = "sms" | "email" | "call" | "social"
+
+type Language = "en" | "zh" | "es" | "bn" | "ht"
+
+type AnalysisResult = {
+  risk_level: RiskLevel
+  confidence: number
+  scam_type: string
+  red_flags: string[]
+  explanation: string
+  actions: string[]
+}
+
 type ScamPost = {
   id: string
-  username: string              // anonymous or handle
-  channel: "sms" | "email" | "call" | "social"
-  language: string              // language of original message
-  snippet: string               // first 200 chars of scam message
+  username: string
+  channel: Channel
+  language: string
+  snippet: string
   scam_type: string
   confidence: number
   reactions: {
@@ -334,107 +327,126 @@ type ScamPost = {
 
 ---
 
-## 9. Gamification Data Model
+## 7. TrustWall (Hardcoded for Demo)
+
+For the hackathon, TrustWall uses a static array of realistic fake posts in `lib/constants.ts`.
 
 ```typescript
-type UserStats = {
-  username: string
-  points: number
-  badges: Badge[]
-  submissions: number
-  confirmed_scams: number
-}
+// lib/constants.ts
+export const FAKE_TRUSTWALL_POSTS: ScamPost[] = [
+  {
+    id: "1",
+    username: "user_mx_492",
+    channel: "sms",
+    language: "es",
+    snippet: "Su número de Seguro Social ha sido suspendido. Llame al 1-800-555-0199 inmediatamente...",
+    scam_type: "Government Impersonation",
+    confidence: 98,
+    reactions: { got_this_too: 47, scam_confirmed: 31, seems_safe: 0 },
+    points_awarded: 25,
+    created_at: "2026-04-25T10:22:00Z"
+  },
+  {
+    id: "2",
+    username: "user_cn_871",
+    channel: "email",
+    language: "zh",
+    snippet: "您的亚马逊账户存在异常登录，请立即点击以下链接验证您的身份...",
+    scam_type: "Phishing",
+    confidence: 95,
+    reactions: { got_this_too: 63, scam_confirmed: 41, seems_safe: 2 },
+    points_awarded: 25,
+    created_at: "2026-04-25T09:15:00Z"
+  },
+  // add 3–5 more entries in Bengali, Haitian Creole, English
+]
 
-type Badge =
-  | "scam_spotter"       // 5+ submissions
-  | "community_protector" // 10+ confirmed
-  | "multilingual_guardian" // submissions in 3+ languages
-  | "scam_pioneer"       // first to report a new pattern
+export const EXAMPLE_MESSAGES = {
+  sms: "URGENT: Your Social Security Number has been suspended due to suspicious activity. To reactivate call 1-800-555-0199 immediately or a warrant will be issued.",
+  email: "Dear Customer, We detected unauthorized access to your Wells Fargo account. Click here to verify your identity within 24 hours or your account will be permanently closed: http://wellsfargo-secure-verify.net",
+  call: "Hello, this is Officer Thompson from the IRS. We have a case filed against you for tax evasion. You owe $4,200. If you don't pay today using Google Play gift cards, federal agents will arrest you within the hour.",
+  social: "Hey! I'm a talent recruiter at Amazon. We're hiring remote workers — $85/hr, no experience needed. Just send me your SSN and bank info for the background check to get started today!"
+}
 ```
 
 ---
 
-## 10. Tech Stack
+## 8. Tech Stack
 
 | Layer | Technology | Notes |
 |-------|-----------|-------|
 | Frontend | Next.js 14 + Tailwind CSS | App Router, TypeScript |
-| Backend | Next.js API Routes | Orchestrates ML + Claude |
-| ML Models | `vaibhavnsingh07/fraud-detection-models` | .pkl files via joblib |
-| ML Service | Python 3.11 + FastAPI | Loaded at startup, not per-request |
-| Explanation | Claude API (claude-sonnet-4-5) | Multilingual, action guidance |
-| SDK | `@anthropic-ai/sdk` | Official Node.js client |
-| Frontend Deploy | Vercel | Free tier |
-| ML Deploy | Railway or Render | Free tier / localhost + ngrok |
+| Backend | Next.js API Routes | No separate server |
+| AI | OpenAI GPT-4o | Detection + explanation + translation in one call |
+| SDK | `openai` npm package | Official Node.js client |
+| Deployment | Vercel | Free tier, one-click deploy |
+
+No database. No auth. No Python service. No external translation API.
 
 ---
 
-## 11. Project Structure
+## 9. Project Structure
 
 ```
 Hunter-Hacks/
 ├── trust-layer/
-│   ├── frontend/
-│   │   ├── app/
-│   │   │   ├── page.tsx                   ← Detection UI
-│   │   │   ├── layout.tsx
-│   │   │   ├── globals.css
-│   │   │   ├── trustwall/
-│   │   │   │   └── page.tsx               ← TrustWall feed
-│   │   │   └── api/
-│   │   │       └── analyze/
-│   │   │           └── route.ts           ← POST /api/analyze
-│   │   ├── components/
-│   │   │   ├── ChannelTabs.tsx
-│   │   │   ├── MessageInput.tsx
-│   │   │   ├── LanguageSelector.tsx
-│   │   │   ├── AnalyzeButton.tsx
-│   │   │   ├── ResultsPanel.tsx
-│   │   │   ├── RiskBadge.tsx
-│   │   │   ├── HighlightedText.tsx
-│   │   │   ├── Explanation.tsx
-│   │   │   ├── ActionSteps.tsx
-│   │   │   ├── TrustWallFeed.tsx
-│   │   │   ├── ScamPost.tsx
-│   │   │   └── ReactionButtons.tsx
-│   │   └── lib/
-│   │       ├── claude.ts                  ← Claude client + system prompt
-│   │       ├── types.ts                   ← AnalysisResult, ScamPost, etc.
-│   │       ├── channelRouter.ts           ← channel → model_type mapping
-│   │       └── constants.ts              ← Languages, fake TrustWall data
-│   └── ml-service/
-│       ├── main.py                        ← FastAPI app
-│       ├── predict.py                     ← Model loading + inference
-│       ├── models/
-│       │   ├── phishing_model.pkl
-│       │   ├── employment_fraud.pkl
-│       │   ├── social_engineering.pkl
-│       │   └── bec_model.pkl
-│       └── requirements.txt
+│   ├── app/
+│   │   ├── page.tsx                   ← Main detection UI
+│   │   ├── layout.tsx
+│   │   ├── globals.css
+│   │   ├── trustwall/
+│   │   │   └── page.tsx               ← TrustWall feed
+│   │   └── api/
+│   │       └── analyze/
+│   │           └── route.ts           ← POST /api/analyze
+│   ├── components/
+│   │   ├── ChannelTabs.tsx
+│   │   ├── MessageInput.tsx
+│   │   ├── LanguageSelector.tsx
+│   │   ├── AnalyzeButton.tsx
+│   │   ├── ResultsPanel.tsx
+│   │   ├── RiskBadge.tsx
+│   │   ├── HighlightedText.tsx
+│   │   ├── Explanation.tsx
+│   │   ├── ActionSteps.tsx
+│   │   ├── TrustWallFeed.tsx
+│   │   ├── ScamPost.tsx
+│   │   └── ReactionButtons.tsx
+│   └── lib/
+│       ├── openai.ts                  ← OpenAI client + prompt builder
+│       ├── channelContext.ts          ← channel → prompt context
+│       ├── types.ts                   ← AnalysisResult, ScamPost, etc.
+│       └── constants.ts              ← Languages, example messages, fake posts
+├── .env.local                         ← OPENAI_API_KEY
+├── next.config.js
+├── tailwind.config.ts
+├── tsconfig.json
+├── package.json
 ├── plan.md
 └── architecture.md
 ```
 
 ---
 
-## 12. Hackathon Constraints
+## 10. Hackathon Constraints
 
 | Constraint | Decision |
 |-----------|---------|
-| Only 1 model needed for demo | Load `phishing_model.pkl` only; others are stubs |
-| No real database | TrustWall uses hardcoded JSON in `constants.ts` |
+| <24 hours | OpenAI GPT-4o — one API call, no infrastructure |
+| No ML service | GPT-4o handles detection natively |
+| No database | TrustWall uses hardcoded JSON |
 | No auth | No login, no accounts, no sessions |
-| ML service may be slow to deploy | Localhost + ngrok as demo fallback |
-| Claude API latency | Pre-warm with dummy call before presenting |
+| Demo reliability | Pre-warm API before presenting; have backup screenshots |
 
-**Minimum viable demo:** phishing model loaded → Email tab → Chinese output → TrustWall feed visible. Everything else is polish.
+**Minimum viable demo:** Email tab → paste scam → Chinese output → highlighted red flags → TrustWall visible.
 
 ---
 
-## 13. Scalability Path (Tell Judges)
+## 11. Scalability Path (Tell Judges)
 
-- Stateless frontend + stateless API → horizontal scaling on Vercel edge
-- ML microservice → containerize with Docker, deploy on GCP Cloud Run
-- TrustWall posts → Supabase (Postgres) with real-time subscriptions
-- Model retraining → community-confirmed posts as labeled training data (active learning)
-- Rate limiting → Upstash Redis on Vercel edge middleware
+- **Phase 2:** Fine-tune a specialized model on TrustWall-confirmed scam posts (active learning)
+- **Phase 3:** Channel-specific models replace GPT-4o for lower latency + cost
+- **Browser extension:** Real-time email scanning inside Gmail / Outlook
+- **SMS integration:** Forward suspicious texts to TrustLayer's number → get a reply
+- **Database:** Supabase for real TrustWall posts + user points
+- **API access:** Let immigrant-serving nonprofits embed TrustLayer in their apps

@@ -54,12 +54,13 @@ Email arrives (any language)
 │  Stage 2: AI Fraud Scoring      │  ← OpenAI gpt-4o-mini
 │  Scoring-only prompt:           │     "Rate this email 0-100 for fraud.
 │  No explanation, just a number  │      Return JSON only."
-│  Output: ai_score (0-100)       │
+│  Output: ai_score (0-100)       │     temperature: 0 for consistency
 └──────────┬──────────────────────┘
            ▼
 ┌─────────────────────────────────┐
 │  Stage 3: Score Aggregation     │  ← Weighted average:
 │  + Threshold Check              │     final = 0.3*rule + 0.7*ai
+│                                 │     Override: if rule > 85 OR ai > 85 → FRAUD
 │                                 │     If final > 70 → FRAUD
 │                                 │     If final > 40 → SUSPICIOUS
 │                                 │     Else → SAFE
@@ -86,7 +87,72 @@ Separation matters:
 
 ---
 
-## 4. Multilingual Strategy
+## 4. Stage 1: Rule-Based Keyword Scoring
+
+Runs on `english_text` (after Stage 0 translation). No AI, instant, free.
+
+### Keyword Categories + Weights
+
+```
+URGENCY (15 points each, max 30):
+  "act now", "immediately", "last warning", "urgent",
+  "your account will be closed", "respond within",
+  "limited time", "expires today", "final notice"
+
+PAYMENT REQUESTS (25 points each, max 50):
+  "gift card", "wire transfer", "bitcoin", "crypto",
+  "western union", "zelle", "money order", "cashapp",
+  "send payment", "processing fee", "upfront payment"
+
+AUTHORITY IMPERSONATION (20 points each, max 40):
+  "IRS", "social security", "ICE", "immigration officer",
+  "federal agent", "department of homeland", "FBI",
+  "bank fraud department", "microsoft support", "apple support"
+
+THREATS (20 points each, max 40):
+  "arrest", "warrant", "deportation", "legal action",
+  "suspended", "terminated", "lawsuit", "police"
+
+TOO GOOD TO BE TRUE (15 points each, max 30):
+  "congratulations you won", "lottery", "free money",
+  "guaranteed income", "work from home $", "inheritance",
+  "unclaimed funds", "you've been selected"
+
+SUSPICIOUS PATTERNS (20 points each, max 20):
+  - Shortened URLs (bit.ly, tinyurl, etc.)
+  - Misspelled brand names (Amaz0n, Paypa1, etc.)
+  - Generic greetings ("Dear Customer", "Dear User")
+```
+
+### Scoring Algorithm
+
+```typescript
+function calculateRuleScore(text: string): number {
+  let score = 0;
+  const lowerText = text.toLowerCase();
+
+  // Check each category, apply per-match points with category caps
+  score += checkCategory(lowerText, URGENCY_WORDS, 15, 30);
+  score += checkCategory(lowerText, PAYMENT_WORDS, 25, 50);
+  score += checkCategory(lowerText, AUTHORITY_WORDS, 20, 40);
+  score += checkCategory(lowerText, THREAT_WORDS, 20, 40);
+  score += checkCategory(lowerText, TOO_GOOD_WORDS, 15, 30);
+  score += checkPatterns(lowerText, 20, 20);
+
+  return Math.min(score, 100); // Cap at 100
+}
+```
+
+**Example:** An email saying "This is the IRS. You must pay immediately with gift cards or face arrest."
+- "IRS" → +20 (authority)
+- "immediately" → +15 (urgency)
+- "gift cards" → +25 (payment)
+- "arrest" → +20 (threat)
+- **rule_score = 80** → high enough to trigger override (>85 not quite, but combined with AI score will flag it)
+
+---
+
+## 5. Multilingual Strategy
 
 **Problem:** Rule-based filter only works on English text.
 
@@ -121,7 +187,8 @@ Return JSON: {
     role: "user",
     content: emailBody
   }],
-  response_format: { type: "json_object" }
+  response_format: { type: "json_object" },
+  temperature: 0
 });
 ```
 
@@ -130,10 +197,21 @@ Return JSON: {
 ```javascript
 const response = await openai.chat.completions.create({
   model: "gpt-4o-mini",
+  temperature: 0,  // Critical: makes scoring consistent across calls
   messages: [{
     role: "system",
     content: `You are a fraud detection system. Analyze the following email
 and score it for fraud/scam likelihood.
+
+Scoring rubric:
+- Urgency/pressure tactics: +20
+- Payment via unusual methods (gift cards, crypto, wire): +30
+- Authority impersonation (IRS, SSA, police): +25
+- Threats (arrest, deportation, lawsuit): +20
+- Suspicious links or spoofed domains: +20
+- Too-good-to-be-true offers: +15
+- Generic/impersonal greeting: +10
+
 Return JSON: {
   "fraud_score": 0-100,
   "scam_type": "phishing|impersonation|job_scam|investment|romance|government|other|none",
@@ -161,7 +239,12 @@ Include: what the scam is, why it's dangerous, and 3 specific action steps.
 Keep it concise and non-alarming — helpful, not scary.`
   }, {
     role: "user",
-    content: JSON.stringify({ original_email: originalText, red_flags, fraud_score })
+    content: JSON.stringify({
+      original_email: originalText,
+      red_flags: stage2Result.red_flags,
+      fraud_score: stage2Result.fraud_score,
+      reasoning: stage2Result.reasoning
+    })
   }]
 });
 ```
@@ -177,7 +260,7 @@ Keep it concise and non-alarming — helpful, not scary.`
 
 ---
 
-## 5. Email Integration (Easiest Solution)
+## 6. Email Integration (Easiest Solution)
 
 ### How Emails Get Into Our System
 
@@ -186,20 +269,52 @@ Keep it concise and non-alarming — helpful, not scary.`
 No OAuth, no Gmail API, no IMAP. Simplest viable approach.
 
 1. User signs up on our dashboard (enters their email)
-2. We give them a unique forwarding address: `user123@parse.trustlayer.app`
+2. We generate a unique forwarding address: `{uuid}@parse.trustlayer.app`
 3. User adds an auto-forward rule in Gmail/Outlook to forward all emails to that address
 4. SendGrid Inbound Parse receives the email and hits our webhook: `POST /api/webhook/email`
-5. Our pipeline processes it
+5. Webhook parses the `to` field to identify the user, then runs the pipeline
+
+### User Routing Logic
+
+SendGrid sends ALL emails for the domain to one webhook. We identify the user by parsing the `to` address:
+
+```typescript
+// In POST /api/webhook/email handler
+async function handleWebhook(formData: FormData) {
+  const to = formData.get("to") as string;        // e.g. "abc123@parse.trustlayer.app"
+  const from = formData.get("from") as string;
+  const subject = formData.get("subject") as string;
+  const body = formData.get("text") as string;     // SendGrid provides plain text
+
+  // Extract forwarding address to identify user
+  const forwardingAddress = to.split(",")[0].trim(); // handle multiple recipients
+  
+  // Look up user in database
+  const { data: user } = await supabase
+    .from("users")
+    .select("*")
+    .eq("forwarding_address", forwardingAddress)
+    .single();
+
+  if (!user) return Response.json({ error: "Unknown user" }, { status: 404 });
+
+  // Run pipeline for this user
+  await runPipeline({ user, from, subject, body });
+}
+```
 
 ```
-User's Gmail ──(auto-forward)──▶ user123@parse.trustlayer.app
+User's Gmail ──(auto-forward)──▶ abc123@parse.trustlayer.app
                                         │
                                         ▼
                               SendGrid Inbound Parse
                                         │
                                         ▼
                               POST /api/webhook/email
-                              { from, to, subject, body, user_id }
+                              (multipart form data)
+                                        │
+                                        ▼
+                              Parse "to" field → look up user
                                         │
                                         ▼
                               Pipeline (Stage 0 → 4)
@@ -225,7 +340,7 @@ If DNS/SendGrid setup takes too long, add a **"Simulate Email"** button on the d
 
 ---
 
-## 6. Dashboard
+## 7. Dashboard
 
 The dashboard is the main UI. It shows everything that's happening.
 
@@ -254,7 +369,7 @@ The dashboard is the main UI. It shows everything that's happening.
 
 ---
 
-## 7. Database
+## 8. Database
 
 **We need a database for:**
 - User accounts (email, forwarding address, language preference)
@@ -317,7 +432,7 @@ If Supabase setup is slow, use an in-memory array on the server. Dashboard still
 
 ---
 
-## 8. Tech Stack
+## 9. Tech Stack
 
 | Layer | Technology | Why |
 |-------|-----------|-----|
@@ -343,7 +458,7 @@ RESEND_API_KEY=...
 
 ---
 
-## 9. Execution Plan
+## 10. Execution Plan
 
 ### Phase 1: Setup (0–2 hours)
 - [ ] Initialize Next.js 14 + Tailwind + TypeScript
@@ -353,11 +468,12 @@ RESEND_API_KEY=...
 - [ ] Deploy skeleton to Render.com
 
 ### Phase 2: Core Pipeline (2–8 hours)
-- [ ] Build `POST /api/webhook/email` — receives email data
+- [ ] Build `POST /api/webhook/email` — receives email via SendGrid (multipart form data)
+- [ ] Implement user routing: parse `to` field → look up user in Supabase
 - [ ] Implement Stage 0: OpenAI language detection + translation
-- [ ] Implement Stage 1: Rule-based keyword/pattern scoring
-- [ ] Implement Stage 2: OpenAI fraud scoring (scoring-only prompt)
-- [ ] Implement Stage 3: Score aggregation + threshold check
+- [ ] Implement Stage 1: Rule-based keyword/pattern scoring (see Section 4)
+- [ ] Implement Stage 2: OpenAI fraud scoring (temperature: 0, scoring rubric)
+- [ ] Implement Stage 3: Score aggregation + threshold check (with override logic)
 - [ ] Implement Stage 4: OpenAI generates warning → Resend sends alert
 - [ ] Save all results to Supabase
 - [ ] Test with sample scam emails (IRS, phishing, job scam)
@@ -386,7 +502,7 @@ RESEND_API_KEY=...
 
 ---
 
-## 10. Project Structure
+## 11. Project Structure
 
 ```
 Hunter-Hacks/
@@ -415,7 +531,7 @@ Hunter-Hacks/
 │   │   ├── openai.ts                    ← OpenAI client config
 │   │   ├── supabase.ts                  ← Supabase client config
 │   │   ├── pipeline.ts                  ← Orchestrates Stage 0-4
-│   │   ├── rules.ts                     ← Stage 1: rule-based scoring
+│   │   ├── rules.ts                     ← Stage 1: rule-based scoring (keyword lists + algorithm)
 │   │   ├── email-sender.ts             ← Resend: send alert emails
 │   │   └── types.ts                     ← TypeScript types
 │   ├── .env.local
@@ -429,7 +545,7 @@ Hunter-Hacks/
 
 ---
 
-## 11. Demo Script (3 Minutes)
+## 12. Demo Script (3 Minutes)
 
 ### 0:00–0:30 — Hook
 > "Every year, immigrants in the US lose over $2 billion to scams. Not because they're careless — because scammers target people who don't know the system and are afraid to ask for help. We built TrustLayer — an automated shield that monitors your email and catches fraud before you fall for it."
@@ -439,9 +555,9 @@ Hunter-Hacks/
 2. Click **"Simulate Email"** — paste a fake IRS phishing email
 3. Show the pipeline running:
    - Language detected: English ✅
-   - Rule-based score: 72 ⚠️
+   - Rule-based score: 80 ⚠️
    - AI fraud score: 94 🔴
-   - Final verdict: **SCAM — 87% confidence**
+   - Final verdict: **SCAM — 90% confidence**
 4. Email appears in dashboard with red badge
 
 ### 1:15–1:45 — The Alert
@@ -462,11 +578,11 @@ Hunter-Hacks/
 
 ---
 
-## 12. Risks + Mitigations
+## 13. Risks + Mitigations
 
 | Risk | Mitigation |
 |------|-----------|
-| OpenAI scores inconsistently | Combine with rule-based score (Stage 1) for stability. Tune the prompt. |
+| OpenAI scores inconsistently | `temperature: 0` + scoring rubric + rule-based backup |
 | SendGrid DNS setup takes too long | "Simulate Email" button as demo fallback |
 | OpenAI API latency in demo | Pre-warm API before demo; have pre-recorded backup |
 | Supabase connection issues | Fallback to in-memory array for demo |
@@ -474,7 +590,7 @@ Hunter-Hacks/
 
 ---
 
-## 13. What We Are NOT Building
+## 14. What We Are NOT Building
 
 - ❌ Separate ML models / Python microservice
 - ❌ Browser extension
@@ -487,7 +603,7 @@ Hunter-Hacks/
 
 ---
 
-## 14. Future Vision (Tell Judges This)
+## 15. Future Vision (Tell Judges This)
 
 - **Gmail/Outlook OAuth** — one-click "Connect your email" instead of manual forwarding
 - **Specialized ML models** — fine-tuned fraud classifiers for higher accuracy
