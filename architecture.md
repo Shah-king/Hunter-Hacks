@@ -1,426 +1,309 @@
-# TrustFund — System Architecture
+# TrustLayer — System Architecture
 
-## 1. User Roles & Permissions
+## 1. High-Level Architecture
 
-There are two roles, and a host is always also a member of their own circle:
+```
+┌─────────────┐       ┌──────────────────┐       ┌─────────────┐
+│   Frontend   │──────▶│  Next.js API      │──────▶│  Claude API  │
+│  (Next.js)   │◀──────│  Route /analyze   │◀──────│  (Sonnet)    │
+└─────────────┘       └──────────────────┘       └─────────────┘
+```
 
-| Role | Can Do |
-|------|--------|
-| **Host** | Create circle, invite members, assign payout positions, start circle, trigger payouts, close/restart circle |
-| **Member** | Join via invite link, make contributions, view ledger, chat with Claude, receive payouts |
+**4 components, that's it:**
 
-A single user can be a host of some circles and a member of others simultaneously.
-
----
-
-## 2. User Interaction Flows (drives the schema)
-
-I traced every screen and action from the plan to make sure the database supports each one.
-
-### Flow 1: Sign Up / Log In
-1. User lands on `/` (landing page)
-2. Taps "Get Started" → `/signup`
-3. Signs up with **phone number** (primary — Supabase phone auth via Twilio)
-4. Enters name, preferred language
-5. → Redirected to `/dashboard`
-
-> **Schema need:** `profiles` table extending `auth.users` with name, phone, language, Stripe customer ID.
-
-### Flow 2: Create a Circle
-1. Host navigates to `/circles/new`
-2. Fills form: circle name, contribution amount ($), cycle length (monthly/biweekly/weekly), member count
-3. Sees live preview card: *"6 members × $200/month = $1,200 pot per cycle"*
-4. Clicks "Create Circle"
-5. → `circles` row created, `members` row created (host, position 1), redirected to `/circles/[id]`
-
-> **Schema need:** `circles` table with amount, cycle config, status. `members` table linking users to circles with a payout position.
-
-### Flow 3: Invite Members
-1. Host on `/circles/[id]` opens invite panel
-2. Enters 5 phone numbers, optionally assigns each a payout position (2-6)
-3. Clicks "Send Invites"
-4. → `invitations` rows created, Twilio sends SMS with unique link: `trustfund.app/join/[token]`
-
-> **Schema need:** `invitations` table with phone, token, optional pre-assigned position, status.
-
-### Flow 4: Member Joins via Invite
-1. Invitee receives SMS, taps link → `/join/[token]`
-2. Sees: circle name, contribution amount, schedule, their assigned position (or picks from open slots)
-3. Signs up if needed, agrees to terms, adds Stripe payment method (test mode)
-4. Clicks "Accept & Join"
-5. → `invitations` row updated to `accepted`, `members` row created
-
-> **Schema need:** invitation → member conversion. Unique constraint on (circle_id, payout_position).
-
-### Flow 5: Circle Starts
-1. All positions filled → host sees "Start Circle" button on `/circles/[id]`
-2. Host clicks it
-3. → Circle status changes to `active`, all `cycles` rows generated (one per member), `contributions` rows created for cycle 1
-
-> **Schema need:** `cycles` table with cycle number, recipient, due date, status. `contributions` table with per-member-per-cycle payment tracking.
-
-### Flow 6: Monthly Contribution
-1. Member opens `/circles/[id]` → sees "Your payment of $200 is due April 25"
-2. Clicks "Pay Now" → Stripe Checkout (test mode)
-3. Stripe confirms → webhook updates contribution to `paid`
-4. All members see the ledger update in realtime via Supabase Realtime
-
-> **Schema need:** `contributions` with Stripe payment intent ID, status enum, paid_at timestamp. Realtime subscription on this table.
-
-### Flow 7: Payout
-1. All contributions for the current cycle are `paid`
-2. Payout auto-triggers (or host manually triggers)
-3. → `payouts` row created, Stripe transfer (test mode) to recipient
-4. Cycle marked `completed`, next cycle becomes `active`, new contribution rows created
-
-> **Schema need:** `payouts` table with recipient, amount, Stripe transfer ID, status.
-
-### Flow 8: Claude AI — Multilingual Onboarding
-1. User opens `/onboarding` and types in their language
-2. Claude extracts: member count, contribution amount, cycle length
-3. Claude responds in that language confirming the details
-4. User confirms → circle is created via API
-
-> **Schema need:** `chat_messages` table for conversation history and context.
-
-### Flow 9: Claude AI — Dispute Resolution
-1. Member opens `/circles/[id]/chat`
-2. Types "Ya pagué este mes" (or equivalent)
-3. API sends message + circle context to Claude
-4. Claude tool-calls the DB to look up the member's contribution record
-5. Claude responds in the member's language with the payment status
-
-> **Schema need:** Claude needs read access to `contributions` filtered by circle + member. Chat history stored in `chat_messages`.
-
-### Flow 10: SMS Reminders
-1. Daily cron job checks for contributions due in 3 days or today
-2. Sends SMS via Twilio to members with `pending` contributions
-3. Marks reminder as sent to avoid duplicates
-
-> **Schema need:** `reminder_sent_3d` and `reminder_sent_due` booleans on `contributions`.
+- **Frontend** — Single-page UI. Input box, analyze button, results panel, language selector
+- **Backend** — One API route (`POST /api/analyze`). Validates input, calls Claude, returns structured result
+- **AI Layer** — Claude Sonnet 4.5 via Anthropic SDK. Does ALL the heavy lifting: classification, explanation, translation
+- **No database, no auth, no external translation API** — stateless request/response
 
 ---
 
-## 3. Database Schema (Supabase / Postgres)
+## 2. System Flow (End-to-End)
 
-All monetary values stored as **integers in cents** to avoid floating-point issues.
+```
+User pastes message
+       │
+       ▼
+Frontend sends POST /api/analyze
+  { text: "...", language: "es" }
+       │
+       ▼
+Backend validates input (non-empty, under 5000 chars)
+       │
+       ▼
+Backend sends structured prompt to Claude API
+  - System prompt with scam detection instructions
+  - User's message as content to analyze
+  - Target language for output
+       │
+       ▼
+Claude returns JSON:
+  { risk_level, scam_type, explanation, actions }
+       │
+       ▼
+Backend parses + returns response to frontend
+       │
+       ▼
+Frontend renders: risk badge, explanation, action steps
+```
 
-### Table: `profiles`
-Extends Supabase `auth.users`. Created via trigger on signup.
+Total round trip: **2-4 seconds**
 
-| Column | Type | Notes |
-|--------|------|-------|
-| `id` | `uuid` PK | FK → `auth.users.id` |
-| `full_name` | `text` | Display name |
-| `phone` | `text` | Phone number |
-| `preferred_language` | `text` | Default `'en'`. Options: en, es, zh, bn, ht |
-| `stripe_customer_id` | `text` | Nullable, set when Stripe onboarded |
-| `created_at` | `timestamptz` | Default `now()` |
-| `updated_at` | `timestamptz` | Default `now()` |
+---
 
-### Table: `circles`
+## 3. Core Components
 
-| Column | Type | Notes |
-|--------|------|-------|
-| `id` | `uuid` PK | Default `gen_random_uuid()` |
-| `name` | `text` | e.g. "China Lee Coworkers" |
-| `host_id` | `uuid` FK → profiles | Circle creator |
-| `contribution_amount` | `integer` | In cents. e.g. 20000 = $200 |
-| `cycle_length` | `text` | Enum: `'weekly'`, `'biweekly'`, `'monthly'` |
-| `member_count` | `integer` | Target size (5-10) |
-| `currency` | `text` | Default `'usd'` |
-| `status` | `text` | `'forming'` → `'active'` → `'completed'` / `'cancelled'` |
-| `start_date` | `date` | Nullable. Set when circle starts |
-| `created_at` | `timestamptz` | |
-| `updated_at` | `timestamptz` | |
+### Frontend (`/app/page.tsx`)
 
-### Table: `members`
-Junction table linking users to circles.
+Single page with 3 states: **input → loading → results**
 
-| Column | Type | Notes |
-|--------|------|-------|
-| `id` | `uuid` PK | |
-| `circle_id` | `uuid` FK → circles | |
-| `user_id` | `uuid` FK → profiles | |
-| `payout_position` | `integer` | 1-indexed. Position 1 receives pot in cycle 1 |
-| `role` | `text` | `'host'` or `'member'` |
-| `status` | `text` | `'active'` / `'removed'` |
-| `joined_at` | `timestamptz` | |
-| `created_at` | `timestamptz` | |
+- `<MessageInput />` — textarea + character count
+- `<LanguageSelector />` — dropdown (English, Spanish, Mandarin, Bengali, Haitian Creole)
+- `<AnalyzeButton />` — triggers POST, shows spinner during loading
+- `<ResultsPanel />` — appears after analysis:
+  - `<RiskBadge />` — color-coded: red (Scam), yellow (Suspicious), green (Safe)
+  - `<ScamType />` — label: "Government Impersonation", "Phishing", etc.
+  - `<Explanation />` — 2-3 sentences in selected language
+  - `<ActionSteps />` — numbered list of what to do
+- `<ExampleMessages />` — 3 clickable pre-loaded scam examples for quick demo
 
-**Constraints:**
-- `UNIQUE(circle_id, user_id)` — can't join same circle twice
-- `UNIQUE(circle_id, payout_position)` — no duplicate positions
+### Backend (`/app/api/analyze/route.ts`)
 
-### Table: `invitations`
+One POST endpoint. No middleware, no auth, no database.
 
-| Column | Type | Notes |
-|--------|------|-------|
-| `id` | `uuid` PK | |
-| `circle_id` | `uuid` FK → circles | |
-| `phone` | `text` | Invitee phone number |
-| `token` | `text` UNIQUE | Random token for invite URL |
-| `assigned_position` | `integer` | Nullable. Pre-assigned payout slot |
-| `status` | `text` | `'pending'` / `'accepted'` / `'expired'` / `'declined'` |
-| `invited_by` | `uuid` FK → profiles | |
-| `expires_at` | `timestamptz` | Auto-expire after 7 days |
-| `created_at` | `timestamptz` | |
+```typescript
+// Request
+{
+  text: string       // the suspicious message (required, max 5000 chars)
+  language: string   // output language code: "en" | "es" | "zh" | "bn" | "ht"
+}
 
-### Table: `cycles`
-Pre-generated when host starts the circle. One row per rotation.
+// Response
+{
+  risk_level: "scam" | "suspicious" | "safe"
+  confidence: number           // 0-100
+  scam_type: string            // e.g. "Government Impersonation"
+  explanation: string          // in requested language
+  red_flags: string[]          // specific signals found
+  actions: string[]            // what to do next
+}
+```
 
-| Column | Type | Notes |
-|--------|------|-------|
-| `id` | `uuid` PK | |
-| `circle_id` | `uuid` FK → circles | |
-| `cycle_number` | `integer` | 1-indexed |
-| `recipient_id` | `uuid` FK → members | Who gets the pot this cycle |
-| `due_date` | `date` | When contributions are due |
-| `status` | `text` | `'upcoming'` / `'active'` / `'completed'` |
-| `created_at` | `timestamptz` | |
+**Backend logic:**
+1. Validate: text is non-empty, under 5000 chars
+2. Build Claude prompt with system instructions + user text + target language
+3. Call Anthropic SDK with `response_format` for structured JSON
+4. Parse Claude's response
+5. Return formatted JSON to frontend
 
-**Constraint:** `UNIQUE(circle_id, cycle_number)`
+### AI Layer (Claude Sonnet 4.5)
 
-### Table: `contributions`
-One row per member per cycle.
+Claude handles everything in one call — no chaining, no multi-step pipeline.
 
-| Column | Type | Notes |
-|--------|------|-------|
-| `id` | `uuid` PK | |
-| `cycle_id` | `uuid` FK → cycles | |
-| `member_id` | `uuid` FK → members | |
-| `amount` | `integer` | In cents |
-| `status` | `text` | `'pending'` / `'paid'` / `'overdue'` / `'failed'` |
-| `paid_at` | `timestamptz` | Nullable |
-| `stripe_payment_intent_id` | `text` | Nullable |
-| `reminder_sent_3d` | `boolean` | Default `false`. 3-day reminder sent? |
-| `reminder_sent_due` | `boolean` | Default `false`. Due-day reminder sent? |
-| `created_at` | `timestamptz` | |
+**System prompt instructs Claude to:**
+1. Analyze the message for scam indicators
+2. Classify risk level (Scam / Suspicious / Safe)
+3. Identify the scam type if applicable
+4. List specific red flags found in the text
+5. Generate a plain-language explanation in the target language
+6. Generate actionable next steps in the target language
 
-**Constraint:** `UNIQUE(cycle_id, member_id)` — prevents double payment records
+**Why Claude and not a custom model:**
+- Multilingual natively — no separate translation step
+- Understands cultural context (IRS scams, visa fraud, etc.)
+- Structured JSON output via tool use
+- Zero training required — prompt engineering only
 
-### Table: `payouts`
-One row per cycle payout.
+---
 
-| Column | Type | Notes |
-|--------|------|-------|
-| `id` | `uuid` PK | |
-| `cycle_id` | `uuid` FK → cycles | |
-| `recipient_id` | `uuid` FK → members | |
-| `amount` | `integer` | Total pot in cents |
-| `status` | `text` | `'pending'` / `'processing'` / `'completed'` / `'failed'` |
-| `paid_at` | `timestamptz` | Nullable |
-| `stripe_transfer_id` | `text` | Nullable |
-| `created_at` | `timestamptz` | |
+## 4. Data Flow
 
-### Table: `chat_messages`
-Stores Claude AI conversation history for both onboarding and disputes.
+```
+INPUT                    PROCESSING                OUTPUT
+─────                    ──────────                ──────
 
-| Column | Type | Notes |
-|--------|------|-------|
-| `id` | `uuid` PK | |
-| `user_id` | `uuid` FK → profiles | |
-| `circle_id` | `uuid` FK → circles | Nullable. Set for dispute chats, null for onboarding |
-| `session_id` | `uuid` | Groups messages in one conversation |
-| `role` | `text` | `'user'` / `'assistant'` |
-| `content` | `text` | Message body |
-| `created_at` | `timestamptz` | |
+"URGENT: IRS says     →  Claude receives:        →  {
+ you owe $5000.          - system prompt              risk_level: "scam",
+ Call now or face         - scam detection rules       scam_type: "Government Impersonation",
+ arrest."                 - the message text           confidence: 95,
+                          - target language: "es"      explanation: "Esto es una estafa. El IRS
+                                                         nunca contacta por texto ni amenaza
+language: "es"        →  Claude analyzes:               con arresto...",
+                          - keyword signals             red_flags: [
+                          - pattern matching              "Urgency pressure",
+                          - intent classification          "Threat of arrest",
+                          - cultural context               "IRS impersonation",
+                                                          "Phone number request"
+                                                        ],
+                                                        actions: [
+                                                          "No llame a este número",
+                                                          "Bloquee al remitente",
+                                                          "Reporte en reportfraud.ftc.gov"
+                                                        ]
+                                                      }
+```
 
-### Entity Relationship Diagram
+**Key point:** No intermediate storage. Text goes in, result comes out. Stateless.
 
-```mermaid
-erDiagram
-    profiles ||--o{ circles : hosts
-    profiles ||--o{ members : "belongs to"
-    profiles ||--o{ invitations : "invited by"
-    profiles ||--o{ chat_messages : sends
+---
 
-    circles ||--o{ members : contains
-    circles ||--o{ invitations : has
-    circles ||--o{ cycles : "divided into"
-    circles ||--o{ chat_messages : "context for"
+## 5. Detection Logic
 
-    members ||--o{ contributions : makes
-    members ||--o{ payouts : receives
+Claude uses a layered approach, all within a single prompt:
 
-    cycles ||--o{ contributions : collects
-    cycles ||--o{ payouts : disburses
+**Layer 1 — Keyword Signals**
+- Urgency: "act now", "immediately", "last warning", "suspended"
+- Authority: "IRS", "Social Security", "ICE", "immigration officer"
+- Payment: "gift card", "wire transfer", "Bitcoin", "Western Union"
+- Threats: "arrest", "warrant", "deportation", "legal action"
 
-    profiles {
-        uuid id PK
-        text full_name
-        text phone
-        text preferred_language
-        text stripe_customer_id
-    }
-    circles {
-        uuid id PK
-        uuid host_id FK
-        text name
-        int contribution_amount
-        text cycle_length
-        int member_count
-        text status
-    }
-    members {
-        uuid id PK
-        uuid circle_id FK
-        uuid user_id FK
-        int payout_position
-        text role
-        text status
-    }
-    invitations {
-        uuid id PK
-        uuid circle_id FK
-        text phone
-        text token
-        text status
-    }
-    cycles {
-        uuid id PK
-        uuid circle_id FK
-        int cycle_number
-        uuid recipient_id FK
-        date due_date
-        text status
-    }
-    contributions {
-        uuid id PK
-        uuid cycle_id FK
-        uuid member_id FK
-        int amount
-        text status
-        text stripe_payment_intent_id
-    }
-    payouts {
-        uuid id PK
-        uuid cycle_id FK
-        uuid recipient_id FK
-        int amount
-        text status
-        text stripe_transfer_id
-    }
+**Layer 2 — Pattern Recognition**
+- Unsolicited contact claiming to be government
+- Request for personal info (SSN, bank account)
+- Too-good-to-be-true offers (job paying $5000/week, free visa)
+- Artificial time pressure ("respond within 1 hour")
+- Suspicious URLs or phone numbers
+
+**Layer 3 — Contextual Reasoning**
+- Claude knows the IRS doesn't text people
+- Claude knows legitimate employers don't ask for payment
+- Claude knows real landlords show units before collecting deposits
+- Claude understands immigrant-specific scam patterns (visa lottery, fake lawyers)
+
+**No ML training, no fine-tuning, no vector database.** Just a well-crafted prompt.
+
+---
+
+## 6. API Design
+
+### `POST /api/analyze`
+
+**Request:**
+```json
+{
+  "text": "URGENT: Your SSN has been suspended. Call 1-800-XXX-XXXX immediately.",
+  "language": "es"
+}
+```
+
+**Response (200):**
+```json
+{
+  "risk_level": "scam",
+  "confidence": 97,
+  "scam_type": "Government Impersonation",
+  "explanation": "Esto es una estafa. El número de Seguro Social no puede ser 'suspendido'. Ninguna agencia del gobierno le contactará por mensaje de texto para amenazarle.",
+  "red_flags": [
+    "Urgency pressure — 'immediately'",
+    "Government impersonation — SSN claim",
+    "Impossible action — SSN cannot be 'suspended'",
+    "Suspicious phone number"
+  ],
+  "actions": [
+    "No llame a este número",
+    "Bloquee al remitente",
+    "Reporte esta estafa en reportfraud.ftc.gov",
+    "El IRS real solo contacta por correo postal"
+  ]
+}
+```
+
+**Error (400):**
+```json
+{
+  "error": "Message text is required and must be under 5000 characters"
+}
+```
+
+**Error (500):**
+```json
+{
+  "error": "Analysis failed. Please try again."
+}
 ```
 
 ---
 
-## 4. Row Level Security (RLS) Policies
+## 7. Example Flow (Demo Case)
 
-Every table has RLS enabled. Key policies:
+**Input:**
+> "Hello, this is Officer James from the IRS. We have detected suspicious activity on your tax account. You owe $4,350 in back taxes. If you do not pay within 2 hours using Google Play gift cards, a federal warrant will be issued for your arrest. Call 1-888-555-0199 now."
 
-| Table | Policy | Rule |
-|-------|--------|------|
-| `profiles` | Users read/update own profile | `auth.uid() = id` |
-| `circles` | Members can read their circles | User's ID exists in `members` for that circle |
-| `circles` | Only host can update | `auth.uid() = host_id` |
-| `members` | Members can read co-members | User is a member of the same circle |
-| `invitations` | Host can CRUD | `auth.uid() = invited_by` |
-| `contributions` | Members can read circle contributions | User is a member of the same circle |
-| `contributions` | Members can update own (pay) | `member.user_id = auth.uid()` |
-| `payouts` | Members can read circle payouts | User is a member of the same circle |
-| `chat_messages` | Users read/write own messages | `auth.uid() = user_id` |
+**Claude processes:**
+- Keyword hits: "IRS", "arrest", "warrant", "gift cards", "pay within 2 hours"
+- Pattern: government impersonation + payment demand + urgency + unusual payment method
+- Context: IRS never calls, never demands gift cards, never threatens immediate arrest
 
----
+**Output (language: English):**
+```
+Risk Level:  🔴 SCAM (98% confidence)
+Type:        Government Impersonation (Fake IRS)
 
-## 5. Supabase Realtime Subscriptions
+Explanation:
+This is a scam. The IRS never contacts taxpayers by phone to demand
+immediate payment. They never threaten arrest, and they absolutely
+never accept gift cards as payment. The real IRS communicates by mail
+first and offers payment plans.
 
-These power the live-updating shared ledger:
+Red Flags:
+• Claims to be IRS calling directly
+• Demands payment via gift cards
+• Threatens arrest within 2 hours
+• Uses urgency to prevent you from thinking
 
-| Page | Subscribe To | Filter | Purpose |
-|------|-------------|--------|---------|
-| `/circles/[id]` | `contributions` | `cycle_id = current_cycle.id` | Live "who paid" indicators |
-| `/circles/[id]` | `payouts` | `cycle_id = current_cycle.id` | Payout confirmation |
-| `/circles/[id]` | `members` | `circle_id = id` | New member joined |
-
----
-
-## 6. API Routes (Next.js App Router)
-
-### Circles
-| Method | Route | Description |
-|--------|-------|-------------|
-| `POST` | `/api/circles` | Create circle + host member row |
-| `GET` | `/api/circles/[id]` | Circle details + members + current cycle |
-| `POST` | `/api/circles/[id]/invite` | Create invitations, send SMS via Twilio |
-| `POST` | `/api/circles/[id]/start` | Set status=active, generate cycles + first batch of contributions |
-
-### Join
-| Method | Route | Description |
-|--------|-------|-------------|
-| `GET` | `/api/join/[token]` | Validate token, return circle preview |
-| `POST` | `/api/join/[token]` | Accept invite, create member row |
-
-### Payments
-| Method | Route | Description |
-|--------|-------|-------------|
-| `POST` | `/api/contributions/[id]/pay` | Create Stripe PaymentIntent, return client secret |
-| `POST` | `/api/payouts/[id]/disburse` | Check all paid, create Stripe transfer |
-
-### AI
-| Method | Route | Description |
-|--------|-------|-------------|
-| `POST` | `/api/chat` | Send message to Claude (with circle context for disputes) |
-
-### Webhooks & Cron
-| Method | Route | Description |
-|--------|-------|-------------|
-| `POST` | `/api/webhooks/stripe` | Handle `payment_intent.succeeded` → update contribution |
-| `GET` | `/api/cron/reminders` | Vercel Cron — find due contributions, send Twilio SMS |
+What To Do:
+1. Do NOT call this number
+2. Do NOT buy gift cards
+3. Hang up and block the number
+4. Report to FTC: reportfraud.ftc.gov
+5. Report IRS impersonation: tigta.gov
+```
 
 ---
 
-## 7. Next.js File Structure
+## 8. Tech Stack
+
+| Component | Technology | Notes |
+|-----------|-----------|-------|
+| Framework | Next.js 14 (App Router) | Frontend + API in one project |
+| Language | TypeScript | Type safety for API responses |
+| Styling | Tailwind CSS | Fast UI development |
+| AI | Anthropic Claude API (claude-sonnet-4-5) | Scam detection + multilingual |
+| SDK | `@anthropic-ai/sdk` | Official Node.js client |
+| Deployment | Vercel | Free tier, instant deploys |
+
+**Not using:** database, auth, Stripe, Twilio, Redis, Docker, Kubernetes, or anything else.
+
+---
+
+## 9. Project Structure
 
 ```
-hunter-hack/
+Hunter-Hacks/
 ├── src/
 │   ├── app/
-│   │   ├── (auth)/                        ← Auth layout (no nav)
-│   │   │   ├── login/page.tsx
-│   │   │   ├── signup/page.tsx
-│   │   │   └── layout.tsx
-│   │   ├── (app)/                         ← Authenticated layout (with nav)
-│   │   │   ├── dashboard/page.tsx         ← List of user's circles
-│   │   │   ├── circles/
-│   │   │   │   ├── new/page.tsx           ← Create circle form
-│   │   │   │   └── [id]/
-│   │   │   │       ├── page.tsx           ← Circle dashboard + ledger
-│   │   │   │       ├── invite/page.tsx    ← Manage invitations
-│   │   │   │       └── chat/page.tsx      ← Claude dispute chat
-│   │   │   ├── onboarding/page.tsx        ← Claude multilingual circle setup
-│   │   │   └── layout.tsx
-│   │   ├── join/[token]/page.tsx          ← Public invite acceptance page
-│   │   ├── api/                           ← (routes listed in Section 6)
-│   │   ├── layout.tsx                     ← Root layout (fonts, metadata)
-│   │   └── page.tsx                       ← Landing page
+│   │   ├── page.tsx                  ← Main UI (input + results)
+│   │   ├── layout.tsx                ← Root layout, fonts, metadata
+│   │   ├── globals.css               ← Tailwind imports
+│   │   └── api/
+│   │       └── analyze/
+│   │           └── route.ts          ← POST /api/analyze endpoint
 │   ├── components/
-│   │   ├── ui/                            ← Button, Input, Card, Badge
-│   │   ├── circles/                       ← CircleCard, CreateCircleForm
-│   │   ├── ledger/                        ← LedgerTable, ContributionRow
-│   │   └── chat/                          ← ChatWindow, ChatBubble
-│   ├── lib/
-│   │   ├── supabase/
-│   │   │   ├── client.ts                  ← Browser Supabase client
-│   │   │   ├── server.ts                  ← Server-side Supabase client
-│   │   │   └── middleware.ts              ← Auth middleware
-│   │   ├── stripe.ts
-│   │   ├── twilio.ts
-│   │   ├── claude.ts                      ← Anthropic client + system prompts
-│   │   └── utils.ts                       ← Format currency, dates
-│   ├── types/
-│   │   └── database.ts                    ← TypeScript types from Supabase
-│   └── hooks/
-│       ├── use-realtime.ts                ← Generic Supabase realtime hook
-│       └── use-circle.ts                  ← Fetch circle + subscribe
-├── supabase/
-│   ├── migrations/
-│   │   └── 001_initial_schema.sql         ← All tables, RLS, triggers
-│   └── seed.sql                           ← "China Lee Coworkers" demo data
+│   │   ├── MessageInput.tsx          ← Textarea + char count
+│   │   ├── AnalyzeButton.tsx         ← Button with loading state
+│   │   ├── LanguageSelector.tsx      ← Dropdown for output language
+│   │   ├── ResultsPanel.tsx          ← Container for all results
+│   │   ├── RiskBadge.tsx             ← Color-coded Scam/Suspicious/Safe
+│   │   ├── Explanation.tsx           ← Explanation text block
+│   │   ├── ActionSteps.tsx           ← Numbered action list
+│   │   └── ExampleMessages.tsx       ← Pre-loaded clickable examples
+│   └── lib/
+│       ├── claude.ts                 ← Anthropic client + system prompt
+│       ├── types.ts                  ← AnalysisResult type definition
+│       └── constants.ts              ← Languages, example messages
 ├── public/
-│   ├── manifest.json                      ← PWA manifest
-│   └── icons/
-├── .env.local.example
+│   └── favicon.ico
+├── .env.local                        ← ANTHROPIC_API_KEY
 ├── next.config.js
 ├── tailwind.config.ts
 ├── tsconfig.json
@@ -431,65 +314,20 @@ hunter-hack/
 
 ---
 
-## 8. Claude AI Integration Design
+## 10. Scalability Notes
 
-### Onboarding Agent (circle creation via natural language)
-
-```
-System prompt:
-  You are a TrustFund assistant helping immigrants create savings circles.
-  Detect the user's language and respond in it. Extract:
-  - member_count, contribution_amount, cycle_length
-  Confirm details, then return structured JSON to create the circle.
-
-Tools available to Claude:
-  - create_circle({ name, amount, cycle_length, member_count })
-```
-
-### Dispute Mediator (queries real data)
-
-```
-System prompt:
-  You are a TrustFund assistant resolving payment disputes.
-  You have access to the circle's contribution records.
-  Always respond in the user's language. Be factual — cite dates and amounts.
-
-Tools available to Claude:
-  - lookup_contribution({ circle_id, member_name_or_phone, cycle_number })
-  - lookup_member_history({ circle_id, member_name_or_phone })
-```
-
-Both agents use **Claude Sonnet 4.5** via the Anthropic SDK with tool use.
+- **Stateless** — no database, no sessions. Every request is independent
+- **Vercel serverless** — auto-scales API routes per request
+- **Claude API** — rate limits are the only bottleneck (~50 RPM on free tier, 1000+ on paid)
+- **No caching needed for hackathon** — but could add edge caching for repeated messages later
 
 ---
 
-## 9. Key Edge Cases & How the Schema Handles Them
+## 11. Hackathon Constraints
 
-| Edge Case | Solution |
-|-----------|----------|
-| **Double payment** | `UNIQUE(cycle_id, member_id)` on contributions. API checks status before creating PaymentIntent. |
-| **Member leaves mid-cycle** | Set `members.status = 'removed'`. Their remaining contributions become N/A. Host decides how to fill the gap (out of hackathon scope). |
-| **Late payment** | Cron job updates `contributions.status` to `'overdue'` when past `cycles.due_date`. |
-| **Invite expires** | `invitations.expires_at` checked on join attempt. Cron can bulk-expire old invitations. |
-| **Host is also a member** | Host gets a `members` row with `role = 'host'`. They contribute and can receive payouts like everyone else. |
-
----
-
-## 10. Open Questions for the Team
-
-These decisions affect the schema and UX. Please weigh in before we start building.
-
-1. **Auth method — phone-first or email-first?**
-   Phone auth (OTP via SMS) is more natural for the immigrant user base, but it means Twilio handles both auth SMS and reminder SMS. Email is simpler to set up. **Recommendation:** Phone-first with email as fallback.
-
-2. **Payout position selection — host assigns all, or members pick?**
-   The plan says "host assigns or members pick slots." For hackathon simplicity, I'd recommend **host assigns all positions when inviting** (the invitation includes the assigned slot). If you want members to pick, the join page needs a slot picker, which is more work.
-
-3. **Auto-payout or manual trigger?**
-   Should the payout fire automatically when all contributions are collected, or should the host click a button? **Recommendation:** Auto-trigger with a confirmation notification to the host. Simpler for demo.
-
-4. **UI language vs Claude language?**
-   Should the entire app UI be translated (full i18n), or just keep the UI in English and let Claude handle multilingual conversations? **Recommendation for hackathon:** English UI + Claude responds in the user's language. Full i18n is a lot of work for 24 hours.
-
-5. **How many team members, and how do you want to split the work?**
-   This affects whether we parallelize frontend/backend or go sequential. Knowing the team size helps me suggest a task breakdown.
+- **One page, one endpoint, one AI call** — that's the entire system
+- **No accounts** — removes auth complexity entirely
+- **No database** — removes schema, migrations, hosting
+- **No translation API** — Claude handles it natively
+- **Demo-first mindset** — every architectural decision optimizes for "does it look good in a 3-minute demo?"
+- **Fail gracefully** — if Claude API is slow, show a loading state. If it errors, show a friendly message. Never crash.
