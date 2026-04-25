@@ -2,10 +2,36 @@
 
 import { useState } from "react"
 import Link from "next/link"
-import { Flame, Heart, MessageCircle, ShieldCheck, Sparkles, TriangleAlert } from "lucide-react"
+import Image from "next/image"
+import { Flame, Heart, MessageCircle, PlayCircle, ShieldCheck, Sparkles, TriangleAlert } from "lucide-react"
 import FloatingActionButton from "../components/FloatingActionButton"
 
-const POSTS = [
+type SocialPostData = {
+  id: string
+  user: string
+  initials: string
+  points: number
+  tag: string
+  risk: "High" | "Medium" | "Low"
+  color: string
+  story: string
+  message: string
+  reaction: string
+  time: string
+  trending?: boolean
+  media?: {
+    type: "image" | "video"
+    src: string
+    alt: string
+  }
+  reactions: {
+    got: number
+    confirmed: number
+    love: number
+  }
+}
+
+const POSTS: SocialPostData[] = [
   {
     id: "p1",
     user: "Maya from Queens",
@@ -22,6 +48,26 @@ const POSTS = [
     reactions: { got: 44, confirmed: 72, love: 130 },
   },
   {
+    id: "p5",
+    user: "Kevin (Software Engineer)",
+    initials: "KV",
+    points: 391,
+    tag: "Phishing",
+    risk: "High",
+    color: "from-sky-300 to-violet-300",
+    story: "Got this message during standup meeting 😭",
+    message: "Urgent: your account will be locked unless you verify now.",
+    reaction: "Bro I haven’t even pushed my code yet 💀",
+    time: "8 min ago",
+    trending: true,
+    media: {
+      type: "image",
+      src: "/social/confused-programmer.svg",
+      alt: "Meme-style illustration of a confused programmer seeing an urgent scam message",
+    },
+    reactions: { got: 58, confirmed: 86, love: 171 },
+  },
+  {
     id: "p2",
     user: "Lina in Flushing",
     initials: "林",
@@ -33,6 +79,12 @@ const POSTS = [
     message: "您好，这里是中国大使馆，您的身份信息涉及案件，请立即配合调查。",
     reaction: "大使馆什么时候用微信联系了？？？",
     time: "12 min ago",
+    trending: true,
+    media: {
+      type: "image",
+      src: "/social/flushing-reaction.svg",
+      alt: "Meme-style shocked reaction image for a Chinese embassy scam warning",
+    },
     reactions: { got: 63, confirmed: 91, love: 144 },
   },
   {
@@ -50,6 +102,26 @@ const POSTS = [
     reactions: { got: 24, confirmed: 41, love: 88 },
   },
   {
+    id: "p6",
+    user: "Nora",
+    initials: "NO",
+    points: 289,
+    tag: "Delivery Scam",
+    risk: "Medium",
+    color: "from-amber-200 to-pink-200",
+    story: "The fake delivery text arrived 2 minutes after I ordered noodles. Suspicious timing.",
+    message: "Package delivery failed. Pay $1.99 redelivery fee at parcel-help-fast.example.",
+    reaction: "The package was still at the restaurant, bestie.",
+    time: "35 min ago",
+    trending: true,
+    media: {
+      type: "video",
+      src: "/social/delivery-video.svg",
+      alt: "Fake video preview thumbnail about a delivery scam text",
+    },
+    reactions: { got: 31, confirmed: 57, love: 103 },
+  },
+  {
     id: "p4",
     user: "Luis",
     initials: "LU",
@@ -65,7 +137,7 @@ const POSTS = [
   },
 ]
 
-function SocialPost({ post }: { post: (typeof POSTS)[number] }) {
+function SocialPost({ post }: { post: SocialPostData }) {
   const [reaction, setReaction] = useState<"got" | "confirmed" | "love" | null>(null)
   const [counts, setCounts] = useState(post.reactions)
 
@@ -76,7 +148,7 @@ function SocialPost({ post }: { post: (typeof POSTS)[number] }) {
   }
 
   return (
-    <article className="social-card overflow-hidden rounded-[34px]">
+    <article className={`social-card overflow-hidden rounded-[34px] ${post.trending ? "border-rose-100 bg-gradient-to-br from-white to-rose-50/50" : ""}`}>
       <div className="p-5">
         <div className="flex items-start justify-between gap-4">
           <div className="flex gap-3">
@@ -94,6 +166,11 @@ function SocialPost({ post }: { post: (typeof POSTS)[number] }) {
             </div>
           </div>
           <div className="flex flex-col items-end gap-2">
+            {post.trending ? (
+              <span className="rounded-full bg-rose-50 px-3 py-1 text-xs font-black text-rose-500">
+                🔥 Trending
+              </span>
+            ) : null}
             <span className="rounded-full bg-rose-50 px-3 py-1 text-xs font-black text-rose-500">
               {post.tag}
             </span>
@@ -113,6 +190,25 @@ function SocialPost({ post }: { post: (typeof POSTS)[number] }) {
         <p className="mt-3 rounded-3xl bg-gradient-to-br from-sky-50 to-pink-50 px-4 py-3 text-sm font-semibold leading-6 text-slate-600">
           {post.reaction}
         </p>
+
+        {post.media ? (
+          <div className="relative mt-4 overflow-hidden rounded-[28px] border border-slate-100 bg-white shadow-sm">
+            <Image
+              src={post.media.src}
+              alt={post.media.alt}
+              width={960}
+              height={540}
+              className="h-auto w-full object-cover"
+            />
+            {post.media.type === "video" ? (
+              <div className="absolute inset-0 flex items-center justify-center bg-slate-950/10">
+                <span className="flex h-16 w-16 items-center justify-center rounded-full bg-white/90 text-slate-950 shadow-sm backdrop-blur">
+                  <PlayCircle className="h-8 w-8" />
+                </span>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
       </div>
 
       <div className="flex flex-wrap gap-2 border-t border-slate-100 bg-white px-5 py-4">

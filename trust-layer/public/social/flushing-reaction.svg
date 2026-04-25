@@ -1,0 +1,17 @@
+<svg width="960" height="540" viewBox="0 0 960 540" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="960" height="540" rx="36" fill="#FFF7ED"/>
+  <rect x="52" y="48" width="856" height="444" rx="34" fill="white" stroke="#FED7AA" stroke-width="3"/>
+  <circle cx="252" cy="238" r="92" fill="#FBCFE8"/>
+  <circle cx="220" cy="218" r="13" fill="#0F172A"/>
+  <circle cx="285" cy="218" r="13" fill="#0F172A"/>
+  <ellipse cx="252" cy="274" rx="24" ry="18" fill="#0F172A"/>
+  <path d="M176 174C210 126 295 124 334 174" stroke="#7C2D12" stroke-width="24" stroke-linecap="round"/>
+  <rect x="410" y="114" width="360" height="254" rx="30" fill="#FFF1F2" stroke="#FDA4AF" stroke-width="3"/>
+  <text x="590" y="177" text-anchor="middle" font-family="Arial, sans-serif" font-size="28" font-weight="800" fill="#9F1239">中国大使馆?</text>
+  <rect x="462" y="214" width="256" height="18" rx="9" fill="#FB7185"/>
+  <rect x="462" y="254" width="208" height="18" rx="9" fill="#FDBA74"/>
+  <rect x="462" y="294" width="238" height="18" rx="9" fill="#CBD5E1"/>
+  <path d="M740 116L800 82L786 148L842 168L778 190L790 252L740 214L688 252L702 190L638 168L694 148L680 82L740 116Z" fill="#FDE68A"/>
+  <text x="252" y="402" text-anchor="middle" font-family="Arial, sans-serif" font-size="30" font-weight="800" fill="#0F172A">微信联系?</text>
+  <text x="252" y="440" text-anchor="middle" font-family="Arial, sans-serif" font-size="23" font-weight="700" fill="#64748B">先别转钱</text>
+</svg>

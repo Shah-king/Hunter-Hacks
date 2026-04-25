@@ -1,0 +1,12 @@
+<svg width="960" height="540" viewBox="0 0 960 540" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="960" height="540" rx="36" fill="#ECFEFF"/>
+  <rect x="52" y="48" width="856" height="444" rx="34" fill="white" stroke="#CFFAFE" stroke-width="3"/>
+  <rect x="132" y="150" width="300" height="214" rx="30" fill="#FDE68A" stroke="#F59E0B" stroke-width="4"/>
+  <path d="M186 222H380M186 270H336M186 318H286" stroke="#92400E" stroke-width="18" stroke-linecap="round"/>
+  <rect x="524" y="152" width="280" height="210" rx="32" fill="#F1F5F9" stroke="#CBD5E1" stroke-width="3"/>
+  <circle cx="664" cy="257" r="54" fill="#0F172A"/>
+  <path d="M650 226L704 257L650 288V226Z" fill="white"/>
+  <rect x="552" y="386" width="224" height="48" rx="18" fill="#0F172A"/>
+  <text x="664" y="418" text-anchor="middle" font-family="Arial, sans-serif" font-size="22" font-weight="800" fill="white">delivery fee?</text>
+  <text x="282" y="420" text-anchor="middle" font-family="Arial, sans-serif" font-size="27" font-weight="800" fill="#0F172A">package still cooking</text>
+</svg>
