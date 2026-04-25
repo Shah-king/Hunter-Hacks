@@ -171,7 +171,7 @@ export default function SocialPage() {
               A community feed for patterns, warnings, and reassurance. Friendly enough to share, useful enough to act on.
             </p>
           </div>
-          <Link href="/#analyze" className="inline-flex items-center justify-center gap-2 rounded-full bg-slate-950 px-5 py-3 text-sm font-black text-white shadow-lg shadow-slate-200 transition hover:-translate-y-0.5">
+          <Link href="/#analyze" className="inline-flex items-center justify-center gap-2 rounded-full bg-slate-950 px-5 py-3 text-sm font-black text-white shadow-sm transition hover:-translate-y-0.5">
             <ShieldCheck className="h-4 w-4" />
             Check a message
           </Link>
@@ -185,7 +185,7 @@ export default function SocialPage() {
           ))}
         </div>
 
-        <aside className="h-fit rounded-[30px] border border-slate-200 bg-white/85 p-5 shadow-lg shadow-slate-200/60">
+        <aside className="h-fit rounded-[30px] border border-slate-200 bg-white/85 p-5 shadow-sm">
           <div className="flex items-center gap-2">
             <Flame className="h-5 w-5 text-rose-400" />
             <p className="font-black text-slate-950">Community pulse</p>

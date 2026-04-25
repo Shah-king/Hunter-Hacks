@@ -146,7 +146,7 @@ function TrendingScamCard() {
             <h2 className="mt-3 text-xl font-black tracking-tight text-slate-950">Trending Scam Today</h2>
           </div>
           <div className="flex flex-col items-end gap-2">
-            <span className="rounded-full bg-rose-500 px-3 py-1 text-xs font-black text-white shadow-lg shadow-rose-100">
+            <span className="rounded-full bg-rose-500 px-3 py-1 text-xs font-black text-white shadow-sm">
               THIS IS A SCAM
             </span>
             <span className="rounded-full bg-white px-3 py-1 text-xs font-black text-rose-600 shadow-sm">
@@ -156,7 +156,7 @@ function TrendingScamCard() {
         </div>
 
         <div className="mt-5 flex gap-3">
-          <div className="flex h-13 w-13 shrink-0 items-center justify-center rounded-3xl bg-gradient-to-br from-pink-300 to-sky-300 font-black text-white shadow-lg shadow-pink-100">
+          <div className="flex h-13 w-13 shrink-0 items-center justify-center rounded-3xl bg-gradient-to-br from-pink-300 to-sky-300 font-black text-white shadow-sm">
             {TRENDING_POST.initials}
           </div>
           <div className="min-w-0 flex-1">
@@ -287,7 +287,7 @@ export default function Home() {
             type="button"
             onClick={analyze}
             disabled={analyzing || !message.trim()}
-            className="mt-5 flex w-full items-center justify-center gap-2 rounded-[22px] bg-sky-500 px-5 py-4 text-sm font-black text-white shadow-xl shadow-sky-200 transition hover:-translate-y-0.5 hover:bg-sky-600 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
+            className="mt-5 flex w-full items-center justify-center gap-2 rounded-[22px] bg-sky-500 px-5 py-4 text-sm font-black text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-sky-600 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
           >
             {analyzing ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
             {analyzing ? "Analyzing..." : "Analyze"}

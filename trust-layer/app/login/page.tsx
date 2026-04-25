@@ -15,7 +15,7 @@ export default function LoginPage() {
           Sign-in is simplified for this build. Continue to the dashboard to use forwarding, quick checks, and TrustWall.
         </p>
         <div className="mt-7 flex flex-wrap justify-center gap-3">
-          <Link href="/" className="rounded-full bg-slate-950 px-5 py-3 text-sm font-black text-white shadow-lg shadow-slate-200 transition hover:-translate-y-0.5">
+          <Link href="/" className="rounded-full bg-slate-950 px-5 py-3 text-sm font-black text-white shadow-sm transition hover:-translate-y-0.5">
             Go to dashboard
           </Link>
           <Link href="/social" className="rounded-full border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-600 shadow-sm transition hover:-translate-y-0.5">
