@@ -48,6 +48,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 <option value="bn">বাংলা</option>
                 <option value="ht">Kreyol</option>
               </select>
+              <Link href="/login" className="rounded-full bg-slate-950 px-4 py-2 text-xs font-bold text-white shadow-lg shadow-slate-200 transition hover:-translate-y-0.5 hover:bg-slate-800 active:scale-95">
+                Login
+              </Link>
             </div>
           </div>
         </header>
