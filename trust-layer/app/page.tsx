@@ -265,27 +265,28 @@ export default function Dashboard() {
       const data = await res.json()
       setEmails(data.emails)
       setStats(data.stats)
-      if (data.user) {
-        setUser(data.user)
-      } else {
-        router.push("/login")
-      }
+      setUser(data.user || null)
     } else {
-      router.push("/login")
+      setUser(null)
     }
     setInitialLoading(false)
-  }, [router])
+  }, [])
 
   useEffect(() => {
     const timeout = setTimeout(() => {
       void fetchEmails()
     }, 0)
-    const interval = setInterval(fetchEmails, 4000)
+    // Only poll if we are logged in
+    const interval = setInterval(() => {
+      if (user) {
+        void fetchEmails()
+      }
+    }, 4000)
     return () => {
       clearTimeout(timeout)
       clearInterval(interval)
     }
-  }, [fetchEmails])
+  }, [fetchEmails, user])
 
   async function simulate() {
     setSimulating(true)
@@ -312,6 +313,41 @@ export default function Dashboard() {
 
   const filtered = filter === "all" ? emails : emails.filter((email) => email.analysis?.risk_level === filter)
   const caughtRate = stats.total > 0 ? Math.round(((stats.fraud + stats.suspicious) / stats.total) * 100) : 0
+
+  if (initialLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gray-950">
+        <Loader2 className="h-8 w-8 animate-spin text-cyan-400" />
+      </div>
+    )
+  }
+
+  if (!user) {
+    return (
+      <main className="flex min-h-screen flex-col items-center justify-center bg-gray-950 px-4 text-center">
+        <div className="mb-8 inline-flex items-center justify-center rounded-2xl border border-cyan-500/30 bg-cyan-500/10 p-4">
+          <ShieldCheck className="h-12 w-12 text-cyan-400" />
+        </div>
+        <h1 className="max-w-4xl text-4xl font-bold tracking-tight text-white sm:text-6xl">
+          Catch fraud before it reaches someone vulnerable.
+        </h1>
+        <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-400">
+          TrustLayer seamlessly integrates with your email to automatically detect, translate, and explain scams in your native language before you fall victim.
+        </p>
+        <div className="mt-10 flex items-center justify-center gap-x-6">
+          <button
+            onClick={() => router.push("/login")}
+            className="rounded-xl bg-cyan-400 px-6 py-3.5 text-sm font-semibold text-slate-950 shadow-sm transition hover:bg-cyan-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-400"
+          >
+            Get started
+          </button>
+          <a href="#" className="text-sm font-semibold leading-6 text-white hover:text-cyan-300 transition">
+            Learn more <span aria-hidden="true">→</span>
+          </a>
+        </div>
+      </main>
+    )
+  }
 
   return (
     <main className="mx-auto flex w-full max-w-6xl flex-col gap-7 px-4 py-8 sm:px-6 lg:px-8">

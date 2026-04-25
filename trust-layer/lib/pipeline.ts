@@ -2,6 +2,7 @@ import { randomUUID } from "crypto"
 import { detectLanguageAndTranslate, scoreFraudWithAI, generateWarningEmail } from "@/lib/openai"
 import { calculateRuleScore } from "@/lib/rules"
 import { sendFraudAlert } from "@/lib/email-sender"
+import { redactPII } from "@/lib/security"
 import { store } from "@/lib/store"
 import type { User, ProcessedEmail, AnalysisResult, RiskLevel } from "@/lib/types"
 
@@ -21,7 +22,10 @@ export async function runPipeline(params: {
   subject: string
   body: string
 }): Promise<{ email: ProcessedEmail; analysis: AnalysisResult }> {
-  const { user, sender, subject, body } = params
+  const { user, sender, subject, body: rawBody } = params
+
+  // SECURITY: Redact PII (SSNs, Credit Cards) before sending to OpenAI or saving to DB
+  const body = redactPII(rawBody)
 
   // Stage 0: Language detection + translation
   const lang = await detectLanguageAndTranslate(body)
