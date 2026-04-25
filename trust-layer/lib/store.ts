@@ -4,9 +4,9 @@ import type { User, ProcessedEmail, AnalysisResult, EmailWithAnalysis } from "@/
 
 const users: User[] = [
   {
-    id: "demo-user-1",
+    id: "usr_demo001",
     email: "demo@trustlayer.store",
-    forwarding_address: "demo@parse.trustlayer.store",
+    forwarding_address: "tl_demo@parse.trustlayer.store",
     language_preference: "en",
     created_at: new Date().toISOString(),
   },

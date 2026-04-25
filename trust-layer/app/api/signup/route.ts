@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
-import { randomUUID } from "crypto"
 import { store } from "@/lib/store"
+import { createId, createForwardingAddress } from "@/lib/ids"
 
 export async function POST(req: NextRequest) {
   try {
@@ -16,12 +16,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ forwarding_address: existing.forwarding_address })
     }
 
-    // Create new user with unique forwarding address
-    const forwardingId = randomUUID().split("-")[0]
+    // Create new user with clean prefixed IDs
     const user = store.createUser({
-      id: randomUUID(),
+      id: createId("user"),
       email: email.trim(),
-      forwarding_address: `${forwardingId}@parse.trustlayer.store`,
+      forwarding_address: createForwardingAddress(),
       language_preference: language,
       created_at: new Date().toISOString(),
     })

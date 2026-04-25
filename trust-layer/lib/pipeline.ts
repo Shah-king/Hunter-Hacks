@@ -1,4 +1,4 @@
-import { randomUUID } from "crypto"
+import { createId } from "@/lib/ids"
 import { detectLanguageAndTranslate, scoreFraudWithAI, generateWarningEmail } from "@/lib/openai"
 import { calculateRuleScore } from "@/lib/rules"
 import { sendFraudAlert } from "@/lib/email-sender"
@@ -32,7 +32,7 @@ export async function runPipeline(params: {
 
   // Save the processed email
   const email: ProcessedEmail = {
-    id: randomUUID(),
+    id: createId("email"),
     user_id: user.id,
     sender,
     subject,
@@ -88,7 +88,7 @@ export async function runPipeline(params: {
   }
 
   const analysis: AnalysisResult = {
-    id: randomUUID(),
+    id: createId("analysis"),
     email_id: email.id,
     rule_score: ruleScore,
     ai_score: aiResult.fraud_score,
