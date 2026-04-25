@@ -9,13 +9,13 @@ export default function LoginPage() {
           <ShieldCheck className="h-8 w-8" />
         </div>
         <h1 className="mt-6 text-3xl font-black tracking-tight text-slate-950">
-          Demo mode is on
+          Welcome to TrustLayer
         </h1>
         <p className="mx-auto mt-3 max-w-xl text-base leading-7 text-slate-600">
-          TrustLayer is running with mock data for the hackathon demo, so there is no account setup or Supabase auth required.
+          Sign-in is simplified for this build. Continue to the dashboard to use forwarding, quick checks, and TrustWall.
         </p>
         <div className="mt-7 flex flex-wrap justify-center gap-3">
-          <Link href="/" className="rounded-full bg-slate-950 px-5 py-3 text-sm font-black text-white shadow-lg shadow-slate-200 transition hover:-translate-y-0.5">
+          <Link href="/" className="rounded-full bg-slate-950 px-5 py-3 text-sm font-black text-white shadow-sm transition hover:-translate-y-0.5">
             Go to dashboard
           </Link>
           <Link href="/social" className="rounded-full border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-600 shadow-sm transition hover:-translate-y-0.5">

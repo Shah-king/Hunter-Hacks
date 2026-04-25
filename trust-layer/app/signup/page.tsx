@@ -128,7 +128,7 @@ export default function SignupPage() {
               type="button"
               onClick={signup}
               disabled={loading || !email.trim()}
-              className="flex w-full items-center justify-center gap-2 rounded-[22px] bg-sky-500 px-5 py-4 text-sm font-black text-white shadow-xl shadow-sky-200 transition hover:-translate-y-0.5 hover:bg-sky-600 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
+              className="flex w-full items-center justify-center gap-2 rounded-[22px] bg-sky-500 px-5 py-4 text-sm font-black text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-sky-600 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
             >
               {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />}
               {loading ? "Setting up..." : "Get forwarding address"}
@@ -169,7 +169,7 @@ export default function SignupPage() {
             ))}
           </div>
 
-          <Link href="/" className="mt-6 flex w-full items-center justify-center gap-2 rounded-[22px] bg-slate-950 px-5 py-4 text-sm font-black text-white shadow-xl shadow-slate-200 transition hover:-translate-y-0.5">
+          <Link href="/" className="mt-6 flex w-full items-center justify-center gap-2 rounded-[22px] bg-slate-950 px-5 py-4 text-sm font-black text-white shadow-sm transition hover:-translate-y-0.5">
             Go to dashboard
             <ArrowRight className="h-4 w-4" />
           </Link>

@@ -6,6 +6,7 @@ import {
   Activity,
   AlertTriangle,
   CheckCircle2,
+  Copy,
   Heart,
   Loader2,
   MessageCircle,
@@ -38,21 +39,28 @@ const ACTIVITY = [
 const SAMPLE_MESSAGE =
   "Final notice: your tax case will be sent to federal court unless you pay today with gift cards."
 
-const DEMO_FORWARDING_ADDRESS = "demo@parse.trustlayer.store"
+const FORWARDING_ADDRESS = "demo@parse.trustlayer.store"
 
 function ProtectionStatus() {
+  const [copied, setCopied] = useState(false)
   const rows = [
     ["Email connected", "Ready", CheckCircle2, "text-emerald-600 bg-emerald-50"],
     ["Monitoring active", "Live", ShieldCheck, "text-sky-600 bg-sky-50"],
     ["1 suspicious message today", "Watch", AlertTriangle, "text-amber-700 bg-amber-50"],
   ] as const
 
+  async function copyForwardingAddress() {
+    await navigator.clipboard.writeText(FORWARDING_ADDRESS)
+    setCopied(true)
+    window.setTimeout(() => setCopied(false), 1600)
+  }
+
   return (
     <section className="soft-card rounded-[28px] p-5">
       <div className="flex items-center justify-between gap-4">
         <div>
           <h2 className="text-lg font-black text-slate-950">Protection Status</h2>
-          <p className="mt-1 text-sm text-slate-500">Mock demo mode, no account required.</p>
+          <p className="mt-1 text-sm text-slate-500">Forwarding is active and monitoring incoming scam reports.</p>
         </div>
         <div className="rounded-2xl bg-sky-50 p-3 text-sky-500">
           <ShieldCheck className="h-5 w-5" />
@@ -74,13 +82,19 @@ function ProtectionStatus() {
       <div className="mt-5 rounded-3xl border border-sky-100 bg-gradient-to-br from-sky-50 to-white p-4">
         <p className="text-xs font-black uppercase tracking-[0.14em] text-sky-500">Forwarding address</p>
         <div className="mt-3 flex flex-col gap-3 rounded-2xl bg-white p-3 shadow-sm sm:flex-row sm:items-center sm:justify-between">
-          <code className="break-all text-sm font-black text-slate-800">{DEMO_FORWARDING_ADDRESS}</code>
-          <Link href="/signup" className="shrink-0 rounded-full bg-slate-950 px-4 py-2 text-xs font-black text-white transition hover:-translate-y-0.5">
-            Setup forwarding
-          </Link>
+          <code className="break-all text-sm font-black text-slate-800">{FORWARDING_ADDRESS}</code>
+          <button
+            type="button"
+            onClick={copyForwardingAddress}
+            className="inline-flex shrink-0 items-center justify-center gap-2 rounded-full bg-slate-950 px-4 py-2 text-xs font-black text-white transition hover:-translate-y-0.5"
+            aria-label="Copy forwarding address"
+          >
+            {copied ? <CheckCircle2 className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+            {copied ? "Copied" : "Copy"}
+          </button>
         </div>
         <p className="mt-3 text-xs leading-5 text-slate-500">
-          Forward suspicious emails here during the demo and TrustLayer shows the analysis in the dashboard flow.
+          Forward suspicious emails here and TrustLayer will surface the analysis in the dashboard flow.
         </p>
       </div>
     </section>
@@ -132,7 +146,7 @@ function TrendingScamCard() {
             <h2 className="mt-3 text-xl font-black tracking-tight text-slate-950">Trending Scam Today</h2>
           </div>
           <div className="flex flex-col items-end gap-2">
-            <span className="rounded-full bg-rose-500 px-3 py-1 text-xs font-black text-white shadow-lg shadow-rose-100">
+            <span className="rounded-full bg-rose-500 px-3 py-1 text-xs font-black text-white shadow-sm">
               THIS IS A SCAM
             </span>
             <span className="rounded-full bg-white px-3 py-1 text-xs font-black text-rose-600 shadow-sm">
@@ -142,7 +156,7 @@ function TrendingScamCard() {
         </div>
 
         <div className="mt-5 flex gap-3">
-          <div className="flex h-13 w-13 shrink-0 items-center justify-center rounded-3xl bg-gradient-to-br from-pink-300 to-sky-300 font-black text-white shadow-lg shadow-pink-100">
+          <div className="flex h-13 w-13 shrink-0 items-center justify-center rounded-3xl bg-gradient-to-br from-pink-300 to-sky-300 font-black text-white shadow-sm">
             {TRENDING_POST.initials}
           </div>
           <div className="min-w-0 flex-1">
@@ -242,7 +256,7 @@ export default function Home() {
           <div className="mt-6 flex flex-wrap gap-3 text-sm font-semibold text-slate-600">
             <span className="rounded-full bg-white px-4 py-2 shadow-sm">multilingual support</span>
             <span className="rounded-full bg-white px-4 py-2 shadow-sm">community alerts</span>
-            <span className="rounded-full bg-white px-4 py-2 shadow-sm">no login needed</span>
+            <span className="rounded-full bg-white px-4 py-2 shadow-sm">forwarding active</span>
           </div>
         </div>
         <ProtectionStatus />
@@ -273,7 +287,7 @@ export default function Home() {
             type="button"
             onClick={analyze}
             disabled={analyzing || !message.trim()}
-            className="mt-5 flex w-full items-center justify-center gap-2 rounded-[22px] bg-sky-500 px-5 py-4 text-sm font-black text-white shadow-xl shadow-sky-200 transition hover:-translate-y-0.5 hover:bg-sky-600 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
+            className="mt-5 flex w-full items-center justify-center gap-2 rounded-[22px] bg-sky-500 px-5 py-4 text-sm font-black text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-sky-600 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
           >
             {analyzing ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
             {analyzing ? "Analyzing..." : "Analyze"}

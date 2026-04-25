@@ -32,7 +32,7 @@ export default function FloatingActionButton({ onSimulate }: { onSimulate?: () =
         type="button"
         onClick={() => setOpen((value) => !value)}
         aria-label="Open quick actions"
-        className="flex h-15 w-15 items-center justify-center rounded-full bg-sky-500 text-white shadow-xl shadow-sky-500/30 transition hover:-translate-y-1 hover:bg-sky-600 active:scale-95"
+        className="flex h-15 w-15 items-center justify-center rounded-full bg-sky-500 text-white shadow-[0_6px_16px_rgba(14,165,233,0.24)] transition hover:-translate-y-1 hover:bg-sky-600 active:scale-95"
       >
         {open ? <MessageCircle className="h-6 w-6" /> : <Plus className="h-7 w-7" />}
       </button>
