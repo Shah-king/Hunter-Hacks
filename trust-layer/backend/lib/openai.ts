@@ -1,5 +1,5 @@
 import OpenAI from "openai"
-import { channelContext } from "./channelContext"
+import { channelContext } from "@/backend/lib/channelContext"
 
 export const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,

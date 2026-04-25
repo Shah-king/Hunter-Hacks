@@ -1,4 +1,4 @@
-import type { Channel, Language, ScamPost } from "./types"
+import type { Channel, Language, ScamPost } from "@/backend/lib/types"
 
 export const LANGUAGES: { code: Language; label: string }[] = [
   { code: "en", label: "English" },
