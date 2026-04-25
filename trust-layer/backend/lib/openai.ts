@@ -1,50 +1,86 @@
 import OpenAI from "openai"
-import { channelContext } from "@/backend/lib/channelContext"
+import type { LanguageDetectionResult, AIScoringResult } from "@/backend/lib/types"
 
-export const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-})
+export const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
 
-export function buildSystemPrompt(channel: string, language: string): string {
-  return `You are TrustLayer, a real-time fraud detection AI protecting immigrants and international students from scams in SMS, email, phone calls, and social media.
-
-Your job is to analyze a message and produce structured fraud intelligence.
-
-CHANNEL CONTEXT:
-${channelContext[channel] ?? channelContext["sms"]}
-
-CLASSIFICATION RULES:
-- "scam" — clear malicious intent, multiple red flags, or direct requests for money/sensitive data
-- "suspicious" — some indicators of deception, unusual urgency, or ambiguous intent
-- "safe" — no meaningful scam indicators
-
-COMMON SCAM PATTERNS TO DETECT:
-- Urgency pressure: "immediately", "act now", "last warning", "within 1 hour", "account suspended"
-- Authority impersonation: IRS, SSA, ICE, immigration officers, police, banks, tech companies
-- Unusual payment requests: gift cards, wire transfer, crypto, Western Union, Zelle, cash
-- Sensitive data requests: SSN, bank account numbers, passwords, date of birth
-- Threats: arrest, warrant, deportation, lawsuit, account closure, service cutoff
-- Suspicious links or spoofed domains (e.g. paypa1.com, wellsfargo-secure-verify.net)
-- Unrealistic offers: high-paying remote jobs requiring upfront info, lottery winnings, free visas
-
-OUTPUT FORMAT — return ONLY this JSON, no other text:
+export async function detectLanguageAndTranslate(emailBody: string): Promise<LanguageDetectionResult> {
+  const res = await openai.chat.completions.create({
+    model: "gpt-4o-mini",
+    temperature: 0,
+    response_format: { type: "json_object" },
+    messages: [
+      {
+        role: "system",
+        content: `Detect the language of the following text. If it is not English, translate it to English.
+Return JSON exactly:
 {
-  "risk_level": "scam" | "suspicious" | "safe",
-  "confidence": <number 0-100>,
-  "scam_type": <string, e.g. "Government Impersonation" | "Phishing" | "Job Fraud" | "Romance Scam" | "Safe Message">,
-  "red_flags": <string array, max 5 specific phrases or patterns found in the message, empty array if safe>,
-  "explanation": <string, 2-3 sentences in ${language} explaining WHY this is or isn't a scam>,
-  "actions": <string array, 3-5 practical steps in ${language}, empty array if safe>
+  "detected_language": "<ISO 639-1 code, e.g. en, es, zh, bn, ht>",
+  "language_name": "<human readable, e.g. English, Spanish, Chinese>",
+  "is_english": <true or false>,
+  "english_text": "<translated text, or original if already English>"
+}`,
+      },
+      { role: "user", content: emailBody },
+    ],
+  })
+  return JSON.parse(res.choices[0].message.content!) as LanguageDetectionResult
 }
 
-LANGUAGE RULE:
-- explanation MUST be written in: ${language}
-- actions MUST be written in: ${language}
-- Use simple, plain language — the reader may be unfamiliar with US systems and legal processes
+export async function scoreFraudWithAI(englishText: string): Promise<AIScoringResult> {
+  const res = await openai.chat.completions.create({
+    model: "gpt-4o-mini",
+    temperature: 0,
+    response_format: { type: "json_object" },
+    messages: [
+      {
+        role: "system",
+        content: `You are a fraud detection system. Analyze the following email and score it for fraud/scam likelihood.
 
-IMPORTANT:
-- Do NOT ask questions
-- Do NOT include any text outside the JSON object
-- Be conservative — when in doubt, mark as "suspicious" not "safe"
-- Reference specific phrases from the message when listing red_flags`
+Scoring rubric (additive):
+- Urgency/pressure tactics: +20
+- Payment via unusual methods (gift cards, crypto, wire transfer): +30
+- Authority impersonation (IRS, SSA, police, immigration): +25
+- Threats (arrest, deportation, lawsuit): +20
+- Suspicious links or spoofed domains: +20
+- Too-good-to-be-true offers (lottery, easy money, remote job): +15
+- Generic/impersonal greeting (Dear Customer, Dear User): +10
+
+Return JSON exactly:
+{
+  "fraud_score": <0-100>,
+  "scam_type": "<phishing|impersonation|job_scam|investment|romance|government|lottery|other|none>",
+  "red_flags": ["<specific phrase or pattern found>", ...],
+  "reasoning": "<one sentence why>"
+}`,
+      },
+      { role: "user", content: englishText },
+    ],
+  })
+  return JSON.parse(res.choices[0].message.content!) as AIScoringResult
+}
+
+export async function generateWarningEmail(
+  originalText: string,
+  redFlags: string[],
+  fraudScore: number,
+  reasoning: string,
+  languageName: string,
+): Promise<string> {
+  const res = await openai.chat.completions.create({
+    model: "gpt-4o-mini",
+    messages: [
+      {
+        role: "system",
+        content: `You are a fraud protection assistant. Generate a clear, helpful warning email about a detected scam.
+Write entirely in ${languageName}. Be helpful and calm — not alarming.
+Include: what the scam is, why it's dangerous, and 3 specific action steps.
+Keep it under 200 words. Plain text only, no HTML.`,
+      },
+      {
+        role: "user",
+        content: JSON.stringify({ original_email: originalText, red_flags: redFlags, fraud_score: fraudScore, reasoning }),
+      },
+    ],
+  })
+  return res.choices[0].message.content ?? ""
 }
