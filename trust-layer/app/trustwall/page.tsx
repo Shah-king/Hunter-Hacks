@@ -1,8 +1,8 @@
 "use client"
 
 import { useState } from "react"
-import { FAKE_TRUSTWALL_POSTS } from "@/lib/constants"
-import type { ScamPost } from "@/lib/types"
+import { FAKE_TRUSTWALL_POSTS } from "@/backend/lib/constants"
+import type { ScamPost } from "@/backend/lib/types"
 
 const CHANNEL_ICONS: Record<string, string> = {
   sms: "💬",

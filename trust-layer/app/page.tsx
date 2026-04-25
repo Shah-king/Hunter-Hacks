@@ -1,8 +1,8 @@
 "use client"
 
 import { useState } from "react"
-import type { AnalysisResult, Channel, Language } from "@/lib/types"
-import { LANGUAGES, EXAMPLE_MESSAGES } from "@/lib/constants"
+import type { AnalysisResult, Channel, Language } from "@/backend/lib/types"
+import { LANGUAGES, EXAMPLE_MESSAGES } from "@/backend/lib/constants"
 
 const CHANNELS: { id: Channel; label: string; icon: string }[] = [
   { id: "sms", label: "SMS / Text", icon: "💬" },

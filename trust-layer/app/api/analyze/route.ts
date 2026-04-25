@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
-import { openai, buildSystemPrompt } from "@/lib/openai"
-import type { AnalysisResult, Channel, Language } from "@/lib/types"
+import { openai, buildSystemPrompt } from "@/backend/lib/openai"
+import type { AnalysisResult, Channel, Language } from "@/backend/lib/types"
 
 export async function POST(req: NextRequest) {
   let body: { text?: string; channel?: Channel; language?: Language }
