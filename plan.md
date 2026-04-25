@@ -1,6 +1,6 @@
-# TrustLayer — Production Plan (v2)
+# TrustLayer — Plan (24-Hour Build)
 
-**One-liner:** Real-time, multi-channel scam and fraud protection for immigrants and international students — powered by specialized ML models, not keywords.
+**One-liner:** Real-time, multi-channel scam and fraud protection for immigrants and international students — powered by OpenAI GPT-4o, multilingual by default.
 
 ---
 
@@ -9,369 +9,302 @@
 - **47% of immigrants** are targeted by scams within their first 2 years in the US
 - Scammers exploit language barriers, unfamiliarity with US systems, and fear of authorities
 - Attack channels: fake IRS calls, phishing emails, job offer fraud, rental scams, social media cons
-- Average loss: **$500–$5,000+ per incident** — money they cannot afford to lose
+- Average loss: **$500–$5,000+ per incident**
 - **Why current tools fail:**
-  - Spam filters use rule-based keyword matching — sophisticated social engineering slips through
+  - Spam filters use keyword rules — sophisticated social engineering slips through
   - FTC complaint forms are English-only, buried, and retroactive
-  - No tool explains *why* it's a scam, *in the victim's language*, with *what to do right now*
-  - Immigrants fear reporting due to immigration status concerns
+  - No tool explains *why* it's a scam in the victim's language with *what to do right now*
 
 ---
 
-## 2. Our Solution: TrustLayer
+## 2. Solution
 
-TrustLayer analyzes suspicious messages across **4 channels** (SMS, Email, Call scripts, Social posts) using **specialized ML fraud detection models** — not keywords — and returns:
+TrustLayer lets anyone paste a suspicious message across **4 channels** (SMS, Email, Call, Social) and instantly get:
 
-- **Risk level** (Scam / Suspicious / Safe)
+- **Risk level** — Scam / Suspicious / Safe
 - **Confidence score** (%)
-- **Highlighted scam phrases** from the actual message
-- **Explanation + action steps** in the user's native language
+- **Red flags** highlighted directly in the message
+- **Plain-language explanation + action steps** in their native language
 
-**This is not another AI chatbot. It's a fraud detection pipeline with a community trust layer on top.**
+**Powered by OpenAI GPT-4o** — handles detection, classification, explanation, and translation in one call. No separate ML service. No training. Ship fast.
 
 ---
 
-## 3. AI Layer — Real ML Models (Not Keywords)
+## 3. AI Layer — OpenAI GPT-4o
 
-### Model Source
-**`vaibhavnsingh07/fraud-detection-models`** on Hugging Face
+### Why OpenAI (Not a Custom ML Model)
 
-Four specialized `.pkl` models, one per scam channel:
+- Multilingual natively — no separate translation step
+- Deep understanding of scam patterns, US government systems, cultural context
+- Structured JSON output via function calling / response format
+- Zero training, zero infrastructure — one API key and go
+- GPT-4o is fast enough for real-time demo (<3 seconds per call)
+- **We have <24 hours — this is the right call**
 
-| Model | Channel | Scam Type |
-|-------|---------|-----------|
-| Phishing Detection | Email tab | Gmail / Outlook phishing, BEC |
-| Employment Fraud | Job scams | Fake job offers, upfront payment fraud |
-| Social Engineering | SMS / Call | Phone scams, impersonation |
-| Business Email Compromise | Email (BEC) | Executive impersonation, wire transfer fraud |
+### What GPT-4o Does Per Request
 
-### Why Specialized Models Beat One General Model
-- Each scam channel has distinct linguistic patterns
-- Employment fraud uses formal language with hidden red flags; phone scams use urgency + authority
-- Ensemble of specialized models reaches **~95% accuracy** vs. ~70–80% for keyword matching
-- Each model outputs its own confidence score — we combine them into a unified risk verdict
+1. Analyze the message for scam indicators specific to the channel (SMS / Email / Call / Social)
+2. Classify: **Scam / Suspicious / Safe** with a confidence score
+3. Identify scam type (Government Impersonation, Phishing, Job Fraud, etc.)
+4. Extract specific red flag phrases from the original text
+5. Write a plain-language explanation in the user's selected language
+6. Generate 3–5 action steps in the user's selected language
 
-### Routing Logic
+### Channel-Aware Prompting
 
-```
-User Input
-    │
-    ├── Email Tab      → phishing_model + bec_model → averaged confidence
-    ├── SMS Tab        → social_engineering_model   → confidence score
-    ├── Call Tab       → social_engineering_model   → confidence score
-    └── Social Tab     → phishing_model             → confidence score
-```
+Each tab sends a `channel` field that adjusts the system prompt context:
 
-### Combined Output
+| Tab | GPT-4o Context Added |
+|-----|---------------------|
+| **SMS** | Phone scams, USPS fraud, fake delivery alerts, prize texts |
+| **Email** | Gmail/Outlook phishing, BEC, fake invoices, spoofed domains |
+| **Call** | IRS calls, SSN suspension, immigration threats, voicemail scripts |
+| **Social** | Instagram giveaways, fake job DMs, crypto fraud, romance scams |
 
-```python
+---
+
+## 4. MVP Scope (Strict — 24 Hours)
+
+### Building This:
+- [ ] 4-tab UI: SMS / Email / Call / Social
+- [ ] Message input + language selector
+- [ ] Analyze button → GPT-4o call → results
+- [ ] Results: risk badge + confidence + red flags + explanation + actions
+- [ ] TrustWall feed (hardcoded fake data — looks real)
+- [ ] Gamification: points counter + badge display (UI only)
+
+### NOT Building:
+- No custom ML models
+- No Python microservice
+- No database
+- No user auth
+- No real-time TrustWall updates
+- No SMS/email integration
+- No browser extension
+
+---
+
+## 5. User Flow
+
+1. User opens TrustLayer — no login
+2. Selects channel tab (SMS / Email / Call / Social)
+3. Pastes suspicious message
+4. Selects output language (English, Chinese, Spanish, Bengali, Haitian Creole)
+5. Clicks **Analyze**
+6. Loading spinner: "Analyzing with AI..."
+7. Results appear:
+   - Color-coded risk badge (red/yellow/green) + confidence %
+   - Original message with red flag phrases highlighted
+   - 2–3 sentence explanation in selected language
+   - Numbered action steps in selected language
+8. Option: "Share to TrustWall" → adds to community feed (fake post for demo)
+
+---
+
+## 6. Tech Stack
+
+| Layer | Choice | Why |
+|-------|--------|-----|
+| Frontend | Next.js 14 + Tailwind CSS | Fast to build, easy to deploy |
+| Backend | Next.js API Routes | No separate server needed |
+| AI | OpenAI GPT-4o | Fraud detection + multilingual in one call |
+| SDK | `openai` npm package | Official Node.js client |
+| Deployment | Vercel | One-click deploy, free tier |
+
+No database. No auth. No ML service. No translation API.
+
+---
+
+## 7. Detection Logic (GPT-4o Prompt Strategy)
+
+GPT-4o receives a structured system prompt instructing it to:
+
+**Scam signals to identify (channel-specific):**
+- Urgency language: "act now", "immediately", "last warning", "your account will be closed"
+- Authority impersonation: IRS, SSA, ICE, immigration officers, bank fraud departments
+- Payment red flags: gift cards, wire transfer, crypto, Western Union, Zelle
+- Threats: arrest, deportation, warrant, lawsuit, account closure
+- Too-good-to-be-true: job paying $5000/week, free visa, lottery winnings
+- Suspicious URLs, spoofed domains, unknown phone numbers
+
+**Classification logic:**
+- **Scam** — 2+ strong signals, clear malicious intent
+- **Suspicious** — 1 signal or ambiguous intent
+- **Safe** — no signals detected
+
+**Output format (JSON via `response_format`):**
+```json
 {
-  "risk_level": "scam" | "suspicious" | "safe",
-  "confidence": 0–100,
-  "model_used": "phishing | employment_fraud | social_engineering | bec",
-  "red_flags": ["Urgency pressure", "Authority impersonation", ...],
-  "explanation": "...",   # in user's language
-  "actions": [...]        # in user's language
+  "risk_level": "scam",
+  "confidence": 96,
+  "scam_type": "Government Impersonation",
+  "red_flags": ["Urgency — 'immediately'", "SSN cannot be suspended", "Unsolicited SMS"],
+  "explanation": "...",
+  "actions": ["...", "..."]
 }
 ```
 
-Claude Sonnet handles the **explanation + translation layer** on top of ML model output — ML detects, Claude explains.
-
 ---
 
-## 4. System Architecture
+## 8. Execution Plan (24 Hours)
 
-```
-┌────────────────────────────────────────────────────────────────┐
-│                        FRONTEND (Next.js)                       │
-│   Tabs: [ SMS ] [ Email ] [ Call ] [ Social ]  Lang Selector   │
-└───────────────────────┬────────────────────────────────────────┘
-                        │ POST /api/analyze { text, channel, language }
-                        ▼
-┌────────────────────────────────────────────────────────────────┐
-│                     BACKEND (Next.js API Routes)                │
-│  - Validates input                                              │
-│  - Routes to correct ML model based on channel                 │
-│  - Calls ML microservice                                        │
-│  - Calls Claude for explanation + translation                   │
-│  - Returns unified result                                       │
-└──────────┬─────────────────────────────┬──────────────────────┘
-           │                             │
-           ▼                             ▼
-┌──────────────────────┐     ┌───────────────────────┐
-│  ML Microservice     │     │  Claude API (Sonnet)   │
-│  (Python / FastAPI)  │     │  - Explanation layer   │
-│  - Loads .pkl models │     │  - Multilingual output │
-│  - Returns score +   │     │  - Action guidance     │
-│    red flags         │     └───────────────────────┘
-└──────────────────────┘
-           │
-           ▼
-┌──────────────────────────────────────────────────────────────┐
-│                     COMMUNITY LAYER                            │
-│  TrustWall — WeChat-style scam feed                           │
-│  - Users post screenshots/messages                            │
-│  - Others react: "I got this too" / "Scam confirmed"          │
-│  - Points + badges for contributors                           │
-└──────────────────────────────────────────────────────────────┘
-```
+### Phase 1 — Setup (0–2 hrs)
+- [ ] `npx create-next-app` with TypeScript + Tailwind
+- [ ] Add `openai` package, set `OPENAI_API_KEY` in `.env.local`
+- [ ] Deploy skeleton to Vercel
+- [ ] Define API route shape + TypeScript types
 
-### Full Data Flow
+### Phase 2 — Core Build (2–8 hrs)
+- [ ] Build `POST /api/analyze` — accepts `{ text, channel, language }`, calls GPT-4o, returns result
+- [ ] Write GPT-4o system prompt with channel-aware context
+- [ ] Build main page: `<ChannelTabs />`, `<MessageInput />`, `<LanguageSelector />`, `<AnalyzeButton />`
+- [ ] Build `<ResultsPanel />`: risk badge + explanation + actions
+- [ ] Connect frontend to API
+- [ ] Test with 5 real scam examples across 3 channels
 
-```
-User pastes message in Email tab
-         │
-         ▼
-POST /api/analyze { text, channel: "email", language: "zh" }
-         │
-         ▼
-Backend routes to ML microservice → phishing_model + bec_model
-         │
-         ▼
-ML returns: { score: 0.94, red_flags: ["urgent wire transfer", "spoofed domain"] }
-         │
-         ▼
-Backend calls Claude: "Given this ML result + red flags, explain in Chinese + give actions"
-         │
-         ▼
-Claude returns: { explanation: "这是一封钓鱼邮件...", actions: ["不要点击链接", ...] }
-         │
-         ▼
-Backend combines → { risk_level: "scam", confidence: 94, explanation, red_flags, actions }
-         │
-         ▼
-Frontend renders: risk badge + highlighted red flags + Chinese explanation + action steps
-```
+### Phase 3 — Multilingual + Red Flags (8–13 hrs)
+- [ ] Confirm GPT-4o returns explanation + actions in selected language
+- [ ] Test: Chinese, Spanish, Bengali, Haitian Creole outputs
+- [ ] Build `<HighlightedText />` — underline red flag phrases in original message
+- [ ] Add scam type label to results
 
----
+### Phase 4 — TrustWall UI (13–18 hrs)
+- [ ] Build `/trustwall` page with hardcoded scam posts
+- [ ] `<ScamPost />` — username, snippet, channel tag, language tag, reaction counts
+- [ ] `<ReactionButtons />` — "I got this too" / "Scam confirmed" (local state only)
+- [ ] Points counter in nav (fake increment on each analysis)
 
-## 5. Multi-Channel Detection (Differentiation)
-
-Most fraud tools check ONE channel. TrustLayer checks FOUR with the right model per channel.
-
-| Tab | Input | Model | What It Catches |
-|-----|-------|-------|----------------|
-| **SMS** | Text messages | Social Engineering | Fake delivery alerts, prize scams, USPS fraud |
-| **Email** | Email body / subject | Phishing + BEC | Gmail/Outlook phishing, fake invoices, boss impersonation |
-| **Call** | Call script / voicemail transcript | Social Engineering | IRS calls, SSN suspension, immigration threats |
-| **Social** | DMs / posts | Phishing | Instagram giveaway scams, fake job DMs, crypto fraud |
-
-Each channel gets the model trained on its scam patterns — not a one-size-fits-all approach.
-
----
-
-## 6. TrustWall — Community Layer
-
-A WeChat-style scam alert feed where the community protects each other.
-
-**How it works:**
-- Users submit scam messages / screenshots after analysis
-- Visible to the community as a public post
-- Others can react:
-  - "I got this too" — validates the scam pattern
-  - "Scam confirmed" — community endorsement
-  - "Seems safe" — counter-signal
-- Posts are tagged by scam type, channel, and language
-
-**Why it matters:**
-- New scam variants appear before models are retrained
-- Community signals fill the gap in real time
-- Future: community-confirmed posts become training data (active learning loop)
-
-**For demo:** show TrustWall pre-populated with 5–10 fake-but-realistic posts in multiple languages
-
----
-
-## 7. Gamification Layer
-
-Encourages reporting, builds the trust network.
-
-**Points System:**
-- Submit a scam → +10 points
-- Scam gets confirmed by community → +25 points
-- First to report a new scam pattern → +50 points (Scam Pioneer badge)
-
-**Badges:**
-- Scam Spotter — first 5 submissions
-- Community Protector — 10+ confirmed scams
-- Multilingual Guardian — submissions in 3+ languages
-- Scam Pioneer — reported a pattern 24h before it went viral
-
-**Leaderboard:** Top 10 contributors visible on TrustWall
-
-**Why this works:**
-- Converts passive victims into active community shields
-- Social proof — seeing others report the same scam reduces shame
-- Builds a labeled dataset as a byproduct (future model retraining)
-
----
-
-## 8. Hackathon Execution Plan
-
-### Phase 1 — Setup (0–2 hours)
-- [ ] Initialize Next.js 14 repo + Tailwind + TypeScript
-- [ ] Set up Python FastAPI microservice skeleton
-- [ ] Load ONE model from HuggingFace (`vaibhavnsingh07/fraud-detection-models`)
-- [ ] Deploy skeleton frontend to Vercel
-- [ ] Set env vars: `ANTHROPIC_API_KEY`, `ML_SERVICE_URL`
-
-### Phase 2 — Core ML Integration (2–8 hours)
-- [ ] FastAPI endpoint: `POST /predict { text, model_type }` → `{ score, red_flags }`
-- [ ] Load phishing model (`.pkl`) via `joblib` or `pickle`
-- [ ] Test with fake IRS phishing email — confirm score > 0.85
-- [ ] Build Next.js `POST /api/analyze` → calls ML service → calls Claude for explanation
-- [ ] Return unified JSON to frontend
-
-### Phase 3 — Multilingual Layer (8–12 hours)
-- [ ] Add language selector (English, Chinese, Spanish, Bengali, Haitian Creole)
-- [ ] Claude prompt: include selected language, make explanation + actions output in that language
-- [ ] Test: same phishing email → Chinese output, Spanish output, Bengali output
-- [ ] Verify natural phrasing per language (not machine-translation feel)
-
-### Phase 4 — Multi-Channel Tabs (12–16 hours)
-- [ ] Build SMS / Email / Call / Social tab UI
-- [ ] Tab selection → sets `channel` in API request
-- [ ] Backend routes `channel` to correct model
-- [ ] Add employment fraud model for Job tab (if time permits)
-
-### Phase 5 — TrustWall UI (16–20 hours)
-- [ ] Build TrustWall feed component with fake-but-realistic data
-- [ ] Show: username, scam snippet, channel tag, language tag, reaction counts
-- [ ] Add reaction buttons ("I got this too", "Scam confirmed")
-- [ ] Points counter visible in nav
-
-### Phase 6 — Polish + Demo Prep (Final hours)
-- [ ] Risk badge: color-coded + animated (red pulse for Scam)
-- [ ] Highlight red flag phrases directly in the input text
+### Phase 5 — Polish + Demo Prep (18–24 hrs)
+- [ ] Red pulse animation on Scam badge
+- [ ] Loading skeleton during analysis
 - [ ] Mobile responsive
-- [ ] Error states + loading skeletons
+- [ ] 3 pre-loaded example messages (click to populate)
+- [ ] Error handling + retry
 - [ ] Practice demo script 3 times
 - [ ] Record backup video
 
 ---
 
-## 9. Demo Script (3 Minutes — Judge-Winning)
+## 9. Task Checklist
+
+- [ ] `npx create-next-app` — TypeScript + Tailwind
+- [ ] Install `openai` package
+- [ ] Create `/app/api/analyze/route.ts`
+- [ ] Write `lib/openai.ts` — client + system prompt builder
+- [ ] Write `lib/types.ts` — `AnalysisResult` type
+- [ ] Write `lib/constants.ts` — languages, example messages, fake TrustWall posts
+- [ ] Write `lib/channelContext.ts` — channel → prompt context map
+- [ ] Build `<ChannelTabs />`
+- [ ] Build `<MessageInput />`
+- [ ] Build `<LanguageSelector />`
+- [ ] Build `<AnalyzeButton />`
+- [ ] Build `<ResultsPanel />`
+- [ ] Build `<RiskBadge />`
+- [ ] Build `<HighlightedText />`
+- [ ] Build `<Explanation />`
+- [ ] Build `<ActionSteps />`
+- [ ] Build `<TrustWallFeed />`
+- [ ] Build `<ScamPost />`
+- [ ] Build `<ReactionButtons />`
+- [ ] Test: fake IRS SMS → Spanish → Scam
+- [ ] Test: phishing email → Chinese → Scam
+- [ ] Test: fake job offer → Bengali → Suspicious
+- [ ] Test: normal message → English → Safe
+- [ ] Deploy to Vercel
+- [ ] Prepare pitch deck
+
+---
+
+## 10. Team Roles
+
+### AI / Logic (1 person)
+- Write and iterate on GPT-4o system prompt
+- Handle channel-aware context injection
+- Parse + validate structured JSON response
+- **Deliverable:** `/api/analyze` returns correct results for all test cases in all languages
+
+### Frontend (1 person)
+- Build all UI components
+- Handle tab state, loading states, results rendering
+- `<HighlightedText />` — match red flag strings in original message
+- **Deliverable:** Clean, working UI that displays results clearly on mobile + desktop
+
+### Integration + TrustWall (1 person)
+- Connect frontend to API end-to-end
+- Build TrustWall page with realistic fake data
+- Reaction buttons + points counter (local state)
+- **Deliverable:** Full demo flow works on live Vercel URL
+
+### Presentation (shared)
+- Build 7-slide pitch deck
+- Write + rehearse demo script
+- **Deliverable:** Polished 3-minute demo
+
+---
+
+## 11. Demo Script (3 Minutes — Judge-Winning)
 
 ### 0:00–0:30 — Hook
-> "Every year, immigrants in the US lose over $2 billion to scams. Not because they're careless — because scammers specifically target people who don't know the system and are afraid to ask for help. Every tool today uses keyword filters. TrustLayer uses real fraud detection models."
+> "Every year, immigrants in the US lose over $2 billion to scams. Not because they're careless — because scammers target people who don't know the system, and every existing tool either misses sophisticated attacks or only works in English. TrustLayer fixes both."
 
 ### 0:30–1:30 — The Detection
 1. Go to **Email tab**
 2. Paste fake IRS phishing email
-3. Hit **Analyze**
-4. Show results:
-   - Red badge: **SCAM — 94% confidence**
-   - Red-highlighted phrases in the original text: *"act immediately"*, *"gift card payment"*, *"warrant for arrest"*
-   - Model: Phishing Detection Model
-   - Explanation in **English**
+3. Select **Chinese** output
+4. Hit **Analyze**
+5. Show results:
+   - Red badge: **SCAM — 96% confidence**
+   - Scam phrases highlighted in the original text
+   - Explanation in **Chinese**: *"这是一封钓鱼邮件。IRS从不通过电子邮件要求付款..."*
+   - Action steps in Chinese
 
-### 1:30–2:00 — Multilingual Switch
-5. Switch language to **Chinese**
-6. Explanation re-renders: *"这是一封钓鱼邮件。IRS从不通过电子邮件要求付款..."*
-7. Switch to **Spanish** — re-renders again
-8. **Say:** "One model. Five languages. Instant."
+### 1:30–2:00 — Switch Channel
+6. Switch to **SMS tab**
+7. Paste fake SSN suspension text
+8. Select **Spanish**
+9. Hit **Analyze** → results in Spanish
+10. **Say:** "Same system. Different channel. Different language. Instant."
 
 ### 2:00–2:30 — TrustWall
-9. Switch to **TrustWall tab**
-10. Show community feed — posts in multiple languages, reactions, badges
-11. Show the IRS email was just posted → reaction count ticking up
-12. **Say:** "Our community is already protecting each other in real time."
+11. Click **TrustWall**
+12. Show community feed — posts in multiple languages with reaction counts
+13. **Say:** "Our community is already reporting scams. Every submission trains the network."
 
 ### 2:30–3:00 — Close
-> "Most fraud tools catch obvious spam. TrustLayer catches what they miss — using specialized ML models per scam type, in the victim's language, with the community as a force multiplier. This is the safety net that should already exist."
+> "Most teams built a chatbot. We built a fraud detection system — multi-channel, multilingual, with a community layer that gets smarter with every report. This is the safety net that should already exist."
 
 ---
 
-## 10. Why TrustLayer Wins
+## 12. Why TrustLayer Wins
 
 | What Other Teams Do | What We Do |
 |---------------------|-----------|
-| One text box + GPT prompt | 4 channels, 4 specialized ML models |
+| Single text box, one language | 4 channels with channel-aware detection |
 | English only | 5 languages, native-quality output |
-| Generic scam advice | Red flags highlighted in the actual message |
-| Solo AI analysis | Community TrustWall as a real-time signal layer |
+| Generic scam warning | Red flags highlighted IN the original message |
+| No community layer | TrustWall — community confirms and shares scams |
 | "Future: multilingual" | Multilingual is live, in the demo, right now |
 
-**The moment that wins:** switching from English to Chinese mid-demo. The room feels the problem. Judges remember it.
+**The moment that wins:** switching to Chinese mid-demo. The room feels the problem.
 
 ---
 
-## 11. What We Are NOT Building (Stay Disciplined)
-
-- We do NOT load all 11 models — 1 (phishing) is enough for demo
-- We do NOT build a real database — TrustWall uses hardcoded fake posts
-- We do NOT build real user auth — no login required
-- We do NOT build the browser extension, SMS integration, or call interception
-- Employment fraud model = Phase 4 stretch goal, not required for demo
-
-**Demo-first. Every decision serves the 3-minute demo.**
-
----
-
-## 12. Tech Stack
-
-| Layer | Technology | Notes |
-|-------|-----------|-------|
-| Frontend | Next.js 14 + Tailwind CSS | Tabs, results, TrustWall |
-| Backend | Next.js API Routes | Orchestrates ML + Claude |
-| ML Service | Python + FastAPI | Loads .pkl models, returns scores |
-| ML Models | `vaibhavnsingh07/fraud-detection-models` (HuggingFace) | Phishing + Employment Fraud |
-| Explanation | Claude API (claude-sonnet-4-5) | Multilingual explanation + actions |
-| Deployment | Vercel (frontend) + Railway/Render (ML service) | Free tier for both |
-
----
-
-## 13. Project Structure
-
-```
-Hunter-Hacks/
-├── trust-layer/
-│   ├── frontend/                        ← Next.js app
-│   │   ├── app/
-│   │   │   ├── page.tsx                 ← Main detection UI (tabs)
-│   │   │   ├── trustwall/page.tsx       ← TrustWall community feed
-│   │   │   └── api/
-│   │   │       └── analyze/route.ts     ← POST /api/analyze
-│   │   └── components/
-│   │       ├── ChannelTabs.tsx          ← SMS / Email / Call / Social tabs
-│   │       ├── MessageInput.tsx
-│   │       ├── RiskBadge.tsx
-│   │       ├── HighlightedText.tsx      ← Red-flags highlighted in message
-│   │       ├── Explanation.tsx
-│   │       ├── ActionSteps.tsx
-│   │       ├── LanguageSelector.tsx
-│   │       ├── TrustWallFeed.tsx
-│   │       └── ReactionButtons.tsx
-│   └── ml-service/                      ← Python FastAPI microservice
-│       ├── main.py                      ← FastAPI app
-│       ├── models/                      ← .pkl model files
-│       │   ├── phishing_model.pkl
-│       │   └── employment_fraud.pkl
-│       ├── predict.py                   ← Model loading + inference
-│       └── requirements.txt
-├── plan.md
-└── architecture.md
-```
-
----
-
-## 14. Risks + Mitigations
+## 13. Risks + Mitigations
 
 | Risk | Mitigation |
 |------|-----------|
-| ML model too slow | Cache model in memory on FastAPI startup, not per-request |
-| HuggingFace models won't load | Test load locally before hackathon; have fallback Claude-only prompt |
-| ML service URL broken in demo | Run ML service locally + ngrok tunnel as backup |
-| Scope creep | Only 1 model (phishing) is required for the winning demo |
-| Claude API slow | Pre-warm with a dummy call before demo begins |
+| GPT-4o API latency | Pre-warm before demo; have backup screenshots |
+| JSON parsing fails | Wrap in try/catch; fallback to safe error message |
+| Highlighted text mismatches | Fuzzy-match red flag strings in frontend |
+| Scope creep | If it's not paste → analyze → result, it's cut |
+| Time runs out | Phase 2 alone is a working demo. TrustWall is polish |
 
 ---
 
-## 15. Future Vision (Tell Judges This)
+## 14. Future Vision (Tell Judges)
 
-- **Active learning:** TrustWall community confirmations become retraining signals for models
-- **SMS integration:** Forward suspicious texts to TrustLayer's number → get a reply
-- **Browser extension:** Real-time email scanning inside Gmail / Outlook
-- **Model fine-tuning:** Retrain on immigrant-specific scam patterns (visa fraud, ICE impersonation)
-- **Partnership:** Deploy through community centers, ESL programs, legal aid orgs
-- **API access:** Let immigrant-serving nonprofits embed TrustLayer detection in their apps
+- **Specialized fine-tuned models** per scam channel — once we have labeled data from TrustWall
+- **Browser extension** — auto-scans emails inline inside Gmail / Outlook
+- **SMS integration** — forward suspicious texts to TrustLayer's number, get a reply
+- **Community training loop** — TrustWall confirmed posts become fine-tuning data
+- **Partnership** — deploy through community centers, ESL programs, legal aid orgs
