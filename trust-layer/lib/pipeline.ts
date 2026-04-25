@@ -1,222 +1,103 @@
-// ============================================================
-// Pipeline Orchestrator — Runs Stage 0 → 4
-// ============================================================
+import { randomUUID } from "crypto"
+import { detectLanguageAndTranslate, scoreFraudWithAI, generateWarningEmail } from "@/lib/openai"
+import { calculateRuleScore } from "@/lib/rules"
+import { sendFraudAlert } from "@/lib/email-sender"
+import { store } from "@/lib/store"
+import type { User, ProcessedEmail, AnalysisResult, RiskLevel } from "@/lib/types"
 
-import { openai } from "@/lib/openai";
-import { supabase } from "@/lib/supabase";
-import { calculateRuleScore } from "@/lib/rules";
-import { sendFraudAlert } from "@/lib/email-sender";
-import type { PipelineResult, LanguageDetectionResult, AIScoreResult } from "@/lib/types";
-
-// --- Stage 0: Language Detection + Translation ---
-async function detectLanguage(text: string): Promise<LanguageDetectionResult> {
-  const response = await openai.chat.completions.create({
-    model: "gpt-4o-mini",
-    temperature: 0,
-    response_format: { type: "json_object" },
-    messages: [
-      {
-        role: "system",
-        content: `Detect the language of the following text.
-If it is not English, translate it to English.
-Return JSON: {
-  "detected_language": "language code (e.g. es, zh, bn, en)",
-  "language_name": "human readable (e.g. Spanish, Chinese)",
-  "is_english": true/false,
-  "english_text": "translated or original text"
-}`,
-      },
-      { role: "user", content: text },
-    ],
-  });
-
-  return JSON.parse(response.choices[0]?.message?.content ?? "{}");
-}
-
-// --- Stage 2: AI Fraud Scoring ---
-async function scoreFraud(englishText: string): Promise<AIScoreResult> {
-  const response = await openai.chat.completions.create({
-    model: "gpt-4o-mini",
-    temperature: 0,
-    response_format: { type: "json_object" },
-    messages: [
-      {
-        role: "system",
-        content: `You are a fraud detection system. Analyze the following email and score it for fraud/scam likelihood.
-
-Scoring rubric:
-- Urgency/pressure tactics: +20
-- Payment via unusual methods (gift cards, crypto, wire): +30
-- Authority impersonation (IRS, SSA, police): +25
-- Threats (arrest, deportation, lawsuit): +20
-- Suspicious links or spoofed domains: +20
-- Too-good-to-be-true offers: +15
-- Generic/impersonal greeting: +10
-
-Return JSON: {
-  "fraud_score": <number 0-100>,
-  "scam_type": "phishing|impersonation|job_scam|investment|romance|government|other|none",
-  "red_flags": ["specific phrases or patterns found"],
-  "reasoning": "one sentence why"
-}`,
-      },
-      { role: "user", content: englishText },
-    ],
-  });
-
-  return JSON.parse(response.choices[0]?.message?.content ?? "{}");
-}
-
-// --- Stage 3: Score Aggregation ---
-function aggregateScores(ruleScore: number, aiScore: number): { finalScore: number; riskLevel: "scam" | "suspicious" | "safe" } {
-  // Override: if either score is very high, it's fraud
+function aggregateScores(ruleScore: number, aiScore: number): { finalScore: number; riskLevel: RiskLevel } {
+  // Override: if either score is very high, flag immediately
   if (ruleScore > 85 || aiScore > 85) {
-    return { finalScore: Math.max(ruleScore, aiScore), riskLevel: "scam" };
+    return { finalScore: Math.max(ruleScore, aiScore), riskLevel: "scam" }
   }
-
-  const finalScore = Math.round(0.3 * ruleScore + 0.7 * aiScore);
-
-  let riskLevel: "scam" | "suspicious" | "safe";
-  if (finalScore > 70) riskLevel = "scam";
-  else if (finalScore > 40) riskLevel = "suspicious";
-  else riskLevel = "safe";
-
-  return { finalScore, riskLevel };
+  const finalScore = Math.round(0.3 * ruleScore + 0.7 * aiScore)
+  const riskLevel: RiskLevel = finalScore > 70 ? "scam" : finalScore > 40 ? "suspicious" : "safe"
+  return { finalScore, riskLevel }
 }
 
-// --- Stage 4: Generate Warning ---
-async function generateWarning(
-  originalText: string,
-  detectedLanguage: string,
-  redFlags: string[],
-  fraudScore: number,
-  reasoning: string
-): Promise<{ explanation: string; actions: string[] }> {
-  const response = await openai.chat.completions.create({
-    model: "gpt-4o-mini",
-    messages: [
-      {
-        role: "system",
-        content: `You are a fraud protection assistant. Generate a clear, helpful
-warning about a detected scam. Write entirely in ${detectedLanguage}.
-Include: what the scam is, why it's dangerous, and 3 specific action steps.
-Keep it concise and non-alarming — helpful, not scary.
-
-Return JSON: {
-  "explanation": "2-3 sentence explanation in ${detectedLanguage}",
-  "actions": ["action 1", "action 2", "action 3"]
-}`,
-      },
-      {
-        role: "user",
-        content: JSON.stringify({ original_email: originalText, red_flags: redFlags, fraud_score: fraudScore, reasoning }),
-      },
-    ],
-    response_format: { type: "json_object" },
-  });
-
-  return JSON.parse(response.choices[0]?.message?.content ?? "{}");
-}
-
-// --- Full Pipeline ---
 export async function runPipeline(params: {
-  userId: string;
-  userEmail: string;
-  from: string;
-  subject: string;
-  body: string;
-}): Promise<PipelineResult> {
-  const { userId, userEmail, from, subject, body } = params;
+  user: User
+  sender: string
+  subject: string
+  body: string
+}): Promise<{ email: ProcessedEmail; analysis: AnalysisResult }> {
+  const { user, sender, subject, body } = params
 
   // Stage 0: Language detection + translation
-  const lang = await detectLanguage(body);
+  const lang = await detectLanguageAndTranslate(body)
 
-  // Stage 1: Rule-based scoring (on english text)
-  const rules = calculateRuleScore(lang.english_text);
+  // Save the processed email
+  const email: ProcessedEmail = {
+    id: randomUUID(),
+    user_id: user.id,
+    sender,
+    subject,
+    body,
+    detected_language: lang.detected_language,
+    language_name: lang.language_name,
+    english_text: lang.english_text,
+    received_at: new Date().toISOString(),
+  }
+  store.saveEmail(email)
 
-  // Stage 2: AI fraud scoring (on english text)
-  const ai = await scoreFraud(lang.english_text);
+  // Stage 1: Rule-based scoring on english_text
+  const { score: ruleScore, hits: ruleHits } = calculateRuleScore(lang.english_text)
 
-  // Stage 3: Aggregate + threshold
-  const { finalScore, riskLevel } = aggregateScores(rules.rule_score, ai.fraud_score);
+  // Stage 2: AI fraud scoring
+  const aiResult = await scoreFraudWithAI(lang.english_text)
 
-  // Stage 4: Generate warning + send alert (only if fraud)
-  let explanation: string | null = null;
-  let actions: string[] | null = null;
-  let alertSent = false;
+  // Stage 3: Aggregate scores
+  const { finalScore, riskLevel } = aggregateScores(ruleScore, aiResult.fraud_score)
 
-  if (riskLevel === "scam") {
-    const warning = await generateWarning(
+  // Stage 4: Generate and send warning (only if scam or suspicious)
+  let alertSent = false
+  let explanation = aiResult.reasoning
+  let actions: string[] = []
+
+  if (riskLevel !== "safe") {
+    const warning = await generateWarningEmail(
       body,
+      aiResult.red_flags,
+      finalScore,
+      aiResult.reasoning,
       lang.language_name,
-      ai.red_flags,
-      ai.fraud_score,
-      ai.reasoning
-    );
-    explanation = warning.explanation;
-    actions = warning.actions;
+    )
+    explanation = warning
 
-    // Send alert email
-    try {
-      await sendFraudAlert({
-        to: userEmail,
-        subject: `⚠️ TrustLayer: Scam Detected — "${subject}"`,
-        explanation: warning.explanation,
-        actions: warning.actions,
-        originalSubject: subject,
-        originalSender: from,
-      });
-      alertSent = true;
-    } catch (err) {
-      console.error("Failed to send alert email:", err);
+    if (riskLevel === "scam") {
+      actions = [
+        "Do not reply to this email or click any links",
+        "Block the sender immediately",
+        "Report to FTC at reportfraud.ftc.gov",
+        "If you shared personal info, contact your bank or credit bureau",
+      ]
+      alertSent = await sendFraudAlert({
+        to: user.email,
+        subject: `Scam Detected — ${aiResult.scam_type}`,
+        warningText: warning,
+        senderEmail: sender,
+        fraudScore: finalScore,
+      })
+    } else {
+      actions = ["Be cautious before responding", "Verify the sender's identity through official channels"]
     }
   }
 
-  // Save to database
-  const emailInsert = await supabase
-    .from("processed_emails")
-    .insert({
-      user_id: userId,
-      sender: from,
-      subject,
-      body,
-      detected_language: lang.detected_language,
-      english_text: lang.english_text,
-    })
-    .select("id")
-    .single();
-
-  if (emailInsert.data) {
-    await supabase.from("analysis_results").insert({
-      email_id: emailInsert.data.id,
-      rule_score: rules.rule_score,
-      ai_score: ai.fraud_score,
-      final_score: finalScore,
-      risk_level: riskLevel,
-      scam_type: ai.scam_type,
-      red_flags: ai.red_flags,
-      explanation,
-      actions,
-      alert_sent: alertSent,
-    });
-  }
-
-  return {
-    detected_language: lang.detected_language,
-    language_name: lang.language_name,
-    is_english: lang.is_english,
-    english_text: lang.english_text,
-    original_text: body,
-    rule_score: rules.rule_score,
-    matched_keywords: rules.matched_keywords,
-    ai_score: ai.fraud_score,
-    scam_type: ai.scam_type,
-    red_flags: ai.red_flags,
-    reasoning: ai.reasoning,
+  const analysis: AnalysisResult = {
+    id: randomUUID(),
+    email_id: email.id,
+    rule_score: ruleScore,
+    ai_score: aiResult.fraud_score,
     final_score: finalScore,
     risk_level: riskLevel,
+    scam_type: aiResult.scam_type === "none" ? "No scam detected" : aiResult.scam_type,
+    red_flags: [...ruleHits, ...aiResult.red_flags].slice(0, 6),
     explanation,
     actions,
     alert_sent: alertSent,
-  };
+    analyzed_at: new Date().toISOString(),
+  }
+  store.saveResult(analysis)
+
+  return { email, analysis }
 }

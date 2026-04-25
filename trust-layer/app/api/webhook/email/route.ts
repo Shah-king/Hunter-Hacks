@@ -1,48 +1,38 @@
-// POST /api/webhook/email — Receives emails from SendGrid Inbound Parse
-import { NextRequest, NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
-import { runPipeline } from "@/lib/pipeline";
+import { NextRequest, NextResponse } from "next/server"
+import { store } from "@/lib/store"
+import { runPipeline } from "@/lib/pipeline"
 
+// SendGrid Inbound Parse sends multipart/form-data
 export async function POST(req: NextRequest) {
   try {
-    // SendGrid sends multipart/form-data
-    const formData = await req.formData();
+    const formData = await req.formData()
 
-    const to = (formData.get("to") as string) ?? "";
-    const from = (formData.get("from") as string) ?? "";
-    const subject = (formData.get("subject") as string) ?? "(no subject)";
-    const body = (formData.get("text") as string) ?? (formData.get("html") as string) ?? "";
+    const to = (formData.get("to") as string) ?? ""
+    const from = (formData.get("from") as string) ?? "unknown@example.com"
+    const subject = (formData.get("subject") as string) ?? "(no subject)"
+    const body = (formData.get("text") as string) ?? (formData.get("html") as string) ?? ""
 
     if (!body.trim()) {
-      return NextResponse.json({ error: "Empty email body" }, { status: 400 });
+      return NextResponse.json({ error: "Empty email body" }, { status: 400 })
     }
 
-    // User routing: parse the "to" address to identify which user
-    const forwardingAddress = to.split(",")[0].trim().toLowerCase();
+    // Identify user by forwarding address
+    const forwardingAddress = to.split(",")[0].trim()
+    const user = store.getUserByForwardingAddress(forwardingAddress)
 
-    const { data: user, error: userError } = await supabase
-      .from("users")
-      .select("*")
-      .eq("forwarding_address", forwardingAddress)
-      .single();
+    if (!user) {
+      // Fall back to demo user so webhook always runs during demo
+      const demoUser = store.getAllUsers()[0]
+      if (!demoUser) return NextResponse.json({ error: "No users registered" }, { status: 404 })
 
-    if (userError || !user) {
-      console.error("Unknown forwarding address:", forwardingAddress);
-      return NextResponse.json({ error: "Unknown user" }, { status: 404 });
+      const { email, analysis } = await runPipeline({ user: demoUser, sender: from, subject, body })
+      return NextResponse.json({ email, analysis })
     }
 
-    // Run the full pipeline
-    const result = await runPipeline({
-      userId: user.id,
-      userEmail: user.email,
-      from,
-      subject,
-      body,
-    });
-
-    return NextResponse.json({ success: true, risk_level: result.risk_level, alert_sent: result.alert_sent });
+    const { email, analysis } = await runPipeline({ user, sender: from, subject, body })
+    return NextResponse.json({ email, analysis })
   } catch (err) {
-    console.error("Webhook error:", err);
-    return NextResponse.json({ error: "Webhook processing failed" }, { status: 500 });
+    console.error("[webhook/email]", err)
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }
