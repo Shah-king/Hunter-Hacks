@@ -1,377 +1,497 @@
-# TrustLayer — Production Plan (v2)
+# TrustLayer — Plan (v3)
 
-**One-liner:** Real-time, multi-channel scam and fraud protection for immigrants and international students — powered by specialized ML models, not keywords.
+**One-liner:** Automated email fraud detection — monitors your inbox, catches scams with AI, and alerts you in your language.
 
 ---
 
-## 1. The Problem
+## 1. Problem
 
 - **47% of immigrants** are targeted by scams within their first 2 years in the US
 - Scammers exploit language barriers, unfamiliarity with US systems, and fear of authorities
-- Attack channels: fake IRS calls, phishing emails, job offer fraud, rental scams, social media cons
-- Average loss: **$500–$5,000+ per incident** — money they cannot afford to lose
+- Common email attacks: fake IRS notices, phishing, job offer fraud, business email compromise
+- Average loss: **$500–$5,000+ per incident**
 - **Why current tools fail:**
-  - Spam filters use rule-based keyword matching — sophisticated social engineering slips through
-  - FTC complaint forms are English-only, buried, and retroactive
-  - No tool explains *why* it's a scam, *in the victim's language*, with *what to do right now*
-  - Immigrants fear reporting due to immigration status concerns
+  - Spam filters use keyword matching — sophisticated social engineering slips through
+  - No tool explains *why* it's a scam, *in the victim's language*, with *what to do next*
+  - Immigrants often don't report because they fear immigration consequences
 
 ---
 
-## 2. Our Solution: TrustLayer
+## 2. Solution
 
-TrustLayer analyzes suspicious messages across **4 channels** (SMS, Email, Call scripts, Social posts) using **specialized ML fraud detection models** — not keywords — and returns:
+TrustLayer connects to a user's email. When an email arrives, it flows through a **multi-stage pipeline**:
 
-- **Risk level** (Scam / Suspicious / Safe)
-- **Confidence score** (%)
-- **Highlighted scam phrases** from the actual message
-- **Explanation + action steps** in the user's native language
+1. Detect language + translate to English (if needed)
+2. Run through rule-based keyword filters
+3. OpenAI scores the email for fraud (scoring-only call)
+4. If fraud score exceeds threshold → OpenAI generates a warning in the user's language → alert email sent
+5. **Dashboard** shows every email processed, its fraud score, and whether an alert was sent
 
-**This is not another AI chatbot. It's a fraud detection pipeline with a community trust layer on top.**
-
----
-
-## 3. AI Layer — Real ML Models (Not Keywords)
-
-### Model Source
-**`vaibhavnsingh07/fraud-detection-models`** on Hugging Face
-
-Four specialized `.pkl` models, one per scam channel:
-
-| Model | Channel | Scam Type |
-|-------|---------|-----------|
-| Phishing Detection | Email tab | Gmail / Outlook phishing, BEC |
-| Employment Fraud | Job scams | Fake job offers, upfront payment fraud |
-| Social Engineering | SMS / Call | Phone scams, impersonation |
-| Business Email Compromise | Email (BEC) | Executive impersonation, wire transfer fraud |
-
-### Why Specialized Models Beat One General Model
-- Each scam channel has distinct linguistic patterns
-- Employment fraud uses formal language with hidden red flags; phone scams use urgency + authority
-- Ensemble of specialized models reaches **~95% accuracy** vs. ~70–80% for keyword matching
-- Each model outputs its own confidence score — we combine them into a unified risk verdict
-
-### Routing Logic
-
-```
-User Input
-    │
-    ├── Email Tab      → phishing_model + bec_model → averaged confidence
-    ├── SMS Tab        → social_engineering_model   → confidence score
-    ├── Call Tab       → social_engineering_model   → confidence score
-    └── Social Tab     → phishing_model             → confidence score
-```
-
-### Combined Output
-
-```python
-{
-  "risk_level": "scam" | "suspicious" | "safe",
-  "confidence": 0–100,
-  "model_used": "phishing | employment_fraud | social_engineering | bec",
-  "red_flags": ["Urgency pressure", "Authority impersonation", ...],
-  "explanation": "...",   # in user's language
-  "actions": [...]        # in user's language
-}
-```
-
-Claude Sonnet handles the **explanation + translation layer** on top of ML model output — ML detects, Claude explains.
+**This is not a paste-and-check tool. It's an automated protection layer that runs in the background.**
 
 ---
 
-## 4. System Architecture
+## 3. Pipeline Architecture
 
 ```
-┌────────────────────────────────────────────────────────────────┐
-│                        FRONTEND (Next.js)                       │
-│   Tabs: [ SMS ] [ Email ] [ Call ] [ Social ]  Lang Selector   │
-└───────────────────────┬────────────────────────────────────────┘
-                        │ POST /api/analyze { text, channel, language }
-                        ▼
-┌────────────────────────────────────────────────────────────────┐
-│                     BACKEND (Next.js API Routes)                │
-│  - Validates input                                              │
-│  - Routes to correct ML model based on channel                 │
-│  - Calls ML microservice                                        │
-│  - Calls Claude for explanation + translation                   │
-│  - Returns unified result                                       │
-└──────────┬─────────────────────────────┬──────────────────────┘
-           │                             │
-           ▼                             ▼
-┌──────────────────────┐     ┌───────────────────────┐
-│  ML Microservice     │     │  Claude API (Sonnet)   │
-│  (Python / FastAPI)  │     │  - Explanation layer   │
-│  - Loads .pkl models │     │  - Multilingual output │
-│  - Returns score +   │     │  - Action guidance     │
-│    red flags         │     └───────────────────────┘
-└──────────────────────┘
-           │
+Email arrives (any language)
+       │
+       ▼
+┌─────────────────────────────────┐
+│  Stage 0: Language Detection    │  ← OpenAI gpt-4o-mini
+│  + Translation to English       │     Returns: detected_language,
+│                                 │     english_text, original_text
+└──────────┬──────────────────────┘
            ▼
-┌──────────────────────────────────────────────────────────────┐
-│                     COMMUNITY LAYER                            │
-│  TrustWall — WeChat-style scam feed                           │
-│  - Users post screenshots/messages                            │
-│  - Others react: "I got this too" / "Scam confirmed"          │
-│  - Points + badges for contributors                           │
-└──────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────┐
+│  Stage 1: Rule-Based Filter     │  ← No AI. Deterministic.
+│  Keywords + pattern matching    │     Scam phrases, suspicious domains,
+│  on english_text                │     urgency language, payment requests
+│  Output: rule_score (0-100)     │
+└──────────┬──────────────────────┘
+           ▼
+┌─────────────────────────────────┐
+│  Stage 2: AI Fraud Scoring      │  ← OpenAI gpt-4o-mini
+│  Scoring-only prompt:           │     "Rate this email 0-100 for fraud.
+│  No explanation, just a number  │      Return JSON only."
+│  Output: ai_score (0-100)       │
+└──────────┬──────────────────────┘
+           ▼
+┌─────────────────────────────────┐
+│  Stage 3: Score Aggregation     │  ← Weighted average:
+│  + Threshold Check              │     final = 0.3*rule + 0.7*ai
+│                                 │     If final > 70 → FRAUD
+│                                 │     If final > 40 → SUSPICIOUS
+│                                 │     Else → SAFE
+└──────────┬──────────────────────┘
+           ▼ (only if FRAUD)
+┌─────────────────────────────────┐
+│  Stage 4: OpenAI Response       │  ← gpt-4o-mini generates warning
+│  Generate warning email in      │     in detected_language
+│  user's detected language       │     Sent to user via Resend API
+└─────────────────────────────────┘
 ```
 
-### Full Data Flow
+**All emails + scores are logged to the database and visible on the dashboard.**
+
+### Why This Pipeline (Not Just One Call)
+
+You might ask: "Why not just send the email to OpenAI in one shot?"
+
+Separation matters:
+- **Stage 1 (rule-based)** is free, instant, and deterministic — catches obvious scams without any API cost
+- **Stage 2 (AI scoring)** is a focused scoring call — easier to calibrate than a multi-task prompt
+- **Stage 4 (response)** only runs when fraud is confirmed — saves money on safe emails
+- If OpenAI goes down, Stage 1 still works as a basic filter
+
+---
+
+## 4. Multilingual Strategy
+
+**Problem:** Rule-based filter only works on English text.
+
+**Solution:** Translate first, evaluate in English, respond in detected language.
 
 ```
-User pastes message in Email tab
-         │
-         ▼
-POST /api/analyze { text, channel: "email", language: "zh" }
-         │
-         ▼
-Backend routes to ML microservice → phishing_model + bec_model
-         │
-         ▼
-ML returns: { score: 0.94, red_flags: ["urgent wire transfer", "spoofed domain"] }
-         │
-         ▼
-Backend calls Claude: "Given this ML result + red flags, explain in Chinese + give actions"
-         │
-         ▼
-Claude returns: { explanation: "这是一封钓鱼邮件...", actions: ["不要点击链接", ...] }
-         │
-         ▼
-Backend combines → { risk_level: "scam", confidence: 94, explanation, red_flags, actions }
-         │
-         ▼
-Frontend renders: risk badge + highlighted red flags + Chinese explanation + action steps
+Email (Spanish) ──▶ Stage 0: OpenAI detects "es", translates to English
+                          │
+                          ▼
+                    english_text goes through Stage 1 + 2 ✅
+                          │
+                          ▼
+                    Stage 4: OpenAI generates warning in Spanish ✅
+```
+
+### Stage 0 — Language Detection + Translation
+
+```javascript
+const response = await openai.chat.completions.create({
+  model: "gpt-4o-mini",
+  messages: [{
+    role: "system",
+    content: `Detect the language of the following text.
+If it is not English, translate it to English.
+Return JSON: {
+  "detected_language": "language code (e.g. es, zh, bn, en)",
+  "language_name": "human readable (e.g. Spanish, Chinese)",
+  "is_english": true/false,
+  "english_text": "translated or original text"
+}`
+  }, {
+    role: "user",
+    content: emailBody
+  }],
+  response_format: { type: "json_object" }
+});
+```
+
+### Stage 2 — AI Fraud Scoring
+
+```javascript
+const response = await openai.chat.completions.create({
+  model: "gpt-4o-mini",
+  messages: [{
+    role: "system",
+    content: `You are a fraud detection system. Analyze the following email
+and score it for fraud/scam likelihood.
+Return JSON: {
+  "fraud_score": 0-100,
+  "scam_type": "phishing|impersonation|job_scam|investment|romance|government|other|none",
+  "red_flags": ["list", "of", "specific", "red", "flags", "found"],
+  "reasoning": "one sentence why"
+}`
+  }, {
+    role: "user",
+    content: englishText
+  }],
+  response_format: { type: "json_object" }
+});
+```
+
+### Stage 4 — Warning Response (Only If Fraud)
+
+```javascript
+const response = await openai.chat.completions.create({
+  model: "gpt-4o-mini",
+  messages: [{
+    role: "system",
+    content: `You are a fraud protection assistant. Generate a clear, helpful
+warning email about a detected scam. Write entirely in ${detectedLanguage}.
+Include: what the scam is, why it's dangerous, and 3 specific action steps.
+Keep it concise and non-alarming — helpful, not scary.`
+  }, {
+    role: "user",
+    content: JSON.stringify({ original_email: originalText, red_flags, fraud_score })
+  }]
+});
+```
+
+### Cost Per Email
+
+| Stage | Model | Cost |
+|-------|-------|------|
+| Stage 0 (detect + translate) | gpt-4o-mini | ~$0.0001 |
+| Stage 2 (fraud scoring) | gpt-4o-mini | ~$0.0002 |
+| Stage 4 (warning, fraud only) | gpt-4o-mini | ~$0.0003 |
+| **Total per email** | | **< $0.001** |
+
+---
+
+## 5. Email Integration (Easiest Solution)
+
+### How Emails Get Into Our System
+
+**Approach: Email Forwarding + SendGrid Inbound Parse**
+
+No OAuth, no Gmail API, no IMAP. Simplest viable approach.
+
+1. User signs up on our dashboard (enters their email)
+2. We give them a unique forwarding address: `user123@parse.trustlayer.app`
+3. User adds an auto-forward rule in Gmail/Outlook to forward all emails to that address
+4. SendGrid Inbound Parse receives the email and hits our webhook: `POST /api/webhook/email`
+5. Our pipeline processes it
+
+```
+User's Gmail ──(auto-forward)──▶ user123@parse.trustlayer.app
+                                        │
+                                        ▼
+                              SendGrid Inbound Parse
+                                        │
+                                        ▼
+                              POST /api/webhook/email
+                              { from, to, subject, body, user_id }
+                                        │
+                                        ▼
+                              Pipeline (Stage 0 → 4)
+```
+
+**Setup required:**
+- SendGrid account (free tier: 100 emails/day)
+- Domain with DNS control (add MX records pointing to SendGrid)
+- One webhook endpoint in our Next.js backend
+
+### How Alert Emails Get Sent
+
+**Approach: Resend API** (simplest email sending service)
+
+When fraud is detected (Stage 4), we send a warning email to the user via Resend:
+- Free tier: 100 emails/day
+- 3 lines of code to send an email
+- No SMTP config needed
+
+### Demo Fallback
+
+If DNS/SendGrid setup takes too long, add a **"Simulate Email"** button on the dashboard that manually triggers the webhook with a sample email. This lets the demo work without real email forwarding.
+
+---
+
+## 6. Dashboard
+
+The dashboard is the main UI. It shows everything that's happening.
+
+### Views
+
+**Main Feed (default):**
+- List of all received emails, newest first
+- Each row shows:
+  - 📧 Sender + subject line
+  - 🕐 Timestamp
+  - 🔴🟡🟢 Risk badge (Scam / Suspicious / Safe)
+  - 📊 Fraud score (0-100)
+  - ✉️ "Alert Sent" or "No Action" indicator
+- Click any row → expand to see full analysis (explanation, red flags, action steps)
+
+**Stats Bar (top):**
+- Total emails processed
+- Fraud detected count
+- Alerts sent count
+- Languages detected
+
+### Filtering
+- Filter by risk level (Scam / Suspicious / Safe)
+- Filter by date range
+- Search by sender or subject
+
+---
+
+## 7. Database
+
+**We need a database for:**
+- User accounts (email, forwarding address, language preference)
+- Processed emails (from, subject, body, timestamp)
+- Analysis results (fraud score, risk level, red flags, alert sent)
+
+### Easiest Solution: Supabase
+
+| Why Supabase | Details |
+|-------------|---------|
+| Free tier | 500MB storage, 50K API requests/month |
+| Real PostgreSQL | Proper relational DB |
+| Built-in auth | Optional, can use for user login |
+| REST API | Auto-generated from tables, no ORM needed |
+
+### Tables
+
+```sql
+-- Users
+CREATE TABLE users (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  email TEXT UNIQUE NOT NULL,
+  forwarding_address TEXT UNIQUE NOT NULL,
+  language_preference TEXT DEFAULT 'en',
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- Processed Emails
+CREATE TABLE processed_emails (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES users(id),
+  sender TEXT,
+  subject TEXT,
+  body TEXT,
+  detected_language TEXT,
+  english_text TEXT,
+  received_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- Analysis Results
+CREATE TABLE analysis_results (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  email_id UUID REFERENCES processed_emails(id),
+  rule_score INTEGER,
+  ai_score INTEGER,
+  final_score INTEGER,
+  risk_level TEXT, -- 'scam' | 'suspicious' | 'safe'
+  scam_type TEXT,
+  red_flags TEXT[],
+  explanation TEXT,
+  actions TEXT[],
+  alert_sent BOOLEAN DEFAULT FALSE,
+  analyzed_at TIMESTAMPTZ DEFAULT now()
+);
+```
+
+### Fallback: In-Memory for Demo
+
+If Supabase setup is slow, use an in-memory array on the server. Dashboard still works, data just doesn't persist across restarts.
+
+---
+
+## 8. Tech Stack
+
+| Layer | Technology | Why |
+|-------|-----------|-----|
+| Frontend | **Next.js 14 + Tailwind CSS** | Dashboard UI, fast to build |
+| Backend | **Next.js API Routes** | Webhook endpoint, pipeline orchestration |
+| AI | **OpenAI API (gpt-4o-mini)** | Language detection, fraud scoring, response generation |
+| Database | **Supabase (PostgreSQL)** | User accounts, email logs, results |
+| Email Inbound | **SendGrid Inbound Parse** | Receives forwarded emails via webhook |
+| Email Outbound | **Resend** | Sends fraud alert emails to users |
+| Deployment | **Render.com** | Free tier, no strict function timeout |
+
+No Python service. No separate ML models. No microservices. **One Next.js app does everything.**
+
+### Environment Variables
+
+```
+OPENAI_API_KEY=...
+SUPABASE_URL=...
+SUPABASE_ANON_KEY=...
+SENDGRID_API_KEY=...
+RESEND_API_KEY=...
 ```
 
 ---
 
-## 5. Multi-Channel Detection (Differentiation)
+## 9. Execution Plan
 
-Most fraud tools check ONE channel. TrustLayer checks FOUR with the right model per channel.
+### Phase 1: Setup (0–2 hours)
+- [ ] Initialize Next.js 14 + Tailwind + TypeScript
+- [ ] Set up Supabase project + create tables
+- [ ] Install dependencies: `openai`, `@supabase/supabase-js`, `resend`
+- [ ] Set env vars
+- [ ] Deploy skeleton to Render.com
 
-| Tab | Input | Model | What It Catches |
-|-----|-------|-------|----------------|
-| **SMS** | Text messages | Social Engineering | Fake delivery alerts, prize scams, USPS fraud |
-| **Email** | Email body / subject | Phishing + BEC | Gmail/Outlook phishing, fake invoices, boss impersonation |
-| **Call** | Call script / voicemail transcript | Social Engineering | IRS calls, SSN suspension, immigration threats |
-| **Social** | DMs / posts | Phishing | Instagram giveaway scams, fake job DMs, crypto fraud |
+### Phase 2: Core Pipeline (2–8 hours)
+- [ ] Build `POST /api/webhook/email` — receives email data
+- [ ] Implement Stage 0: OpenAI language detection + translation
+- [ ] Implement Stage 1: Rule-based keyword/pattern scoring
+- [ ] Implement Stage 2: OpenAI fraud scoring (scoring-only prompt)
+- [ ] Implement Stage 3: Score aggregation + threshold check
+- [ ] Implement Stage 4: OpenAI generates warning → Resend sends alert
+- [ ] Save all results to Supabase
+- [ ] Test with sample scam emails (IRS, phishing, job scam)
 
-Each channel gets the model trained on its scam patterns — not a one-size-fits-all approach.
+### Phase 3: Dashboard (8–14 hours)
+- [ ] Build dashboard layout (stats bar + email feed)
+- [ ] Fetch processed emails from Supabase
+- [ ] Email list with risk badges, scores, alert indicators
+- [ ] Expandable rows showing full analysis details
+- [ ] "Simulate Email" button for demo
+- [ ] Filter by risk level
 
----
+### Phase 4: Email Integration (14–17 hours)
+- [ ] Set up SendGrid Inbound Parse (domain + MX records + webhook)
+- [ ] Test: forward a real email → confirm pipeline runs end-to-end
+- [ ] Build simple signup page (enter email → get forwarding address)
+- [ ] If SendGrid fails → "Simulate Email" button is the demo fallback
 
-## 6. TrustWall — Community Layer
-
-A WeChat-style scam alert feed where the community protects each other.
-
-**How it works:**
-- Users submit scam messages / screenshots after analysis
-- Visible to the community as a public post
-- Others can react:
-  - "I got this too" — validates the scam pattern
-  - "Scam confirmed" — community endorsement
-  - "Seems safe" — counter-signal
-- Posts are tagged by scam type, channel, and language
-
-**Why it matters:**
-- New scam variants appear before models are retrained
-- Community signals fill the gap in real time
-- Future: community-confirmed posts become training data (active learning loop)
-
-**For demo:** show TrustWall pre-populated with 5–10 fake-but-realistic posts in multiple languages
-
----
-
-## 7. Gamification Layer
-
-Encourages reporting, builds the trust network.
-
-**Points System:**
-- Submit a scam → +10 points
-- Scam gets confirmed by community → +25 points
-- First to report a new scam pattern → +50 points (Scam Pioneer badge)
-
-**Badges:**
-- Scam Spotter — first 5 submissions
-- Community Protector — 10+ confirmed scams
-- Multilingual Guardian — submissions in 3+ languages
-- Scam Pioneer — reported a pattern 24h before it went viral
-
-**Leaderboard:** Top 10 contributors visible on TrustWall
-
-**Why this works:**
-- Converts passive victims into active community shields
-- Social proof — seeing others report the same scam reduces shame
-- Builds a labeled dataset as a byproduct (future model retraining)
-
----
-
-## 8. Hackathon Execution Plan
-
-### Phase 1 — Setup (0–2 hours)
-- [ ] Initialize Next.js 14 repo + Tailwind + TypeScript
-- [ ] Set up Python FastAPI microservice skeleton
-- [ ] Load ONE model from HuggingFace (`vaibhavnsingh07/fraud-detection-models`)
-- [ ] Deploy skeleton frontend to Vercel
-- [ ] Set env vars: `ANTHROPIC_API_KEY`, `ML_SERVICE_URL`
-
-### Phase 2 — Core ML Integration (2–8 hours)
-- [ ] FastAPI endpoint: `POST /predict { text, model_type }` → `{ score, red_flags }`
-- [ ] Load phishing model (`.pkl`) via `joblib` or `pickle`
-- [ ] Test with fake IRS phishing email — confirm score > 0.85
-- [ ] Build Next.js `POST /api/analyze` → calls ML service → calls Claude for explanation
-- [ ] Return unified JSON to frontend
-
-### Phase 3 — Multilingual Layer (8–12 hours)
-- [ ] Add language selector (English, Chinese, Spanish, Bengali, Haitian Creole)
-- [ ] Claude prompt: include selected language, make explanation + actions output in that language
-- [ ] Test: same phishing email → Chinese output, Spanish output, Bengali output
-- [ ] Verify natural phrasing per language (not machine-translation feel)
-
-### Phase 4 — Multi-Channel Tabs (12–16 hours)
-- [ ] Build SMS / Email / Call / Social tab UI
-- [ ] Tab selection → sets `channel` in API request
-- [ ] Backend routes `channel` to correct model
-- [ ] Add employment fraud model for Job tab (if time permits)
-
-### Phase 5 — TrustWall UI (16–20 hours)
-- [ ] Build TrustWall feed component with fake-but-realistic data
-- [ ] Show: username, scam snippet, channel tag, language tag, reaction counts
-- [ ] Add reaction buttons ("I got this too", "Scam confirmed")
-- [ ] Points counter visible in nav
-
-### Phase 6 — Polish + Demo Prep (Final hours)
-- [ ] Risk badge: color-coded + animated (red pulse for Scam)
-- [ ] Highlight red flag phrases directly in the input text
-- [ ] Mobile responsive
-- [ ] Error states + loading skeletons
-- [ ] Practice demo script 3 times
+### Phase 5: Polish + Demo Prep (17–22 hours)
+- [ ] Mobile responsive dashboard
+- [ ] Loading states + error handling
+- [ ] Risk badge animations (red pulse for scam)
+- [ ] Pre-populate dashboard with 5+ sample emails for demo
+- [ ] Practice demo 3 times
 - [ ] Record backup video
 
 ---
 
-## 9. Demo Script (3 Minutes — Judge-Winning)
-
-### 0:00–0:30 — Hook
-> "Every year, immigrants in the US lose over $2 billion to scams. Not because they're careless — because scammers specifically target people who don't know the system and are afraid to ask for help. Every tool today uses keyword filters. TrustLayer uses real fraud detection models."
-
-### 0:30–1:30 — The Detection
-1. Go to **Email tab**
-2. Paste fake IRS phishing email
-3. Hit **Analyze**
-4. Show results:
-   - Red badge: **SCAM — 94% confidence**
-   - Red-highlighted phrases in the original text: *"act immediately"*, *"gift card payment"*, *"warrant for arrest"*
-   - Model: Phishing Detection Model
-   - Explanation in **English**
-
-### 1:30–2:00 — Multilingual Switch
-5. Switch language to **Chinese**
-6. Explanation re-renders: *"这是一封钓鱼邮件。IRS从不通过电子邮件要求付款..."*
-7. Switch to **Spanish** — re-renders again
-8. **Say:** "One model. Five languages. Instant."
-
-### 2:00–2:30 — TrustWall
-9. Switch to **TrustWall tab**
-10. Show community feed — posts in multiple languages, reactions, badges
-11. Show the IRS email was just posted → reaction count ticking up
-12. **Say:** "Our community is already protecting each other in real time."
-
-### 2:30–3:00 — Close
-> "Most fraud tools catch obvious spam. TrustLayer catches what they miss — using specialized ML models per scam type, in the victim's language, with the community as a force multiplier. This is the safety net that should already exist."
-
----
-
-## 10. Why TrustLayer Wins
-
-| What Other Teams Do | What We Do |
-|---------------------|-----------|
-| One text box + GPT prompt | 4 channels, 4 specialized ML models |
-| English only | 5 languages, native-quality output |
-| Generic scam advice | Red flags highlighted in the actual message |
-| Solo AI analysis | Community TrustWall as a real-time signal layer |
-| "Future: multilingual" | Multilingual is live, in the demo, right now |
-
-**The moment that wins:** switching from English to Chinese mid-demo. The room feels the problem. Judges remember it.
-
----
-
-## 11. What We Are NOT Building (Stay Disciplined)
-
-- We do NOT load all 11 models — 1 (phishing) is enough for demo
-- We do NOT build a real database — TrustWall uses hardcoded fake posts
-- We do NOT build real user auth — no login required
-- We do NOT build the browser extension, SMS integration, or call interception
-- Employment fraud model = Phase 4 stretch goal, not required for demo
-
-**Demo-first. Every decision serves the 3-minute demo.**
-
----
-
-## 12. Tech Stack
-
-| Layer | Technology | Notes |
-|-------|-----------|-------|
-| Frontend | Next.js 14 + Tailwind CSS | Tabs, results, TrustWall |
-| Backend | Next.js API Routes | Orchestrates ML + Claude |
-| ML Service | Python + FastAPI | Loads .pkl models, returns scores |
-| ML Models | `vaibhavnsingh07/fraud-detection-models` (HuggingFace) | Phishing + Employment Fraud |
-| Explanation | Claude API (claude-sonnet-4-5) | Multilingual explanation + actions |
-| Deployment | Vercel (frontend) + Railway/Render (ML service) | Free tier for both |
-
----
-
-## 13. Project Structure
+## 10. Project Structure
 
 ```
 Hunter-Hacks/
-├── trust-layer/
-│   ├── frontend/                        ← Next.js app
-│   │   ├── app/
-│   │   │   ├── page.tsx                 ← Main detection UI (tabs)
-│   │   │   ├── trustwall/page.tsx       ← TrustWall community feed
-│   │   │   └── api/
-│   │   │       └── analyze/route.ts     ← POST /api/analyze
-│   │   └── components/
-│   │       ├── ChannelTabs.tsx          ← SMS / Email / Call / Social tabs
-│   │       ├── MessageInput.tsx
-│   │       ├── RiskBadge.tsx
-│   │       ├── HighlightedText.tsx      ← Red-flags highlighted in message
-│   │       ├── Explanation.tsx
-│   │       ├── ActionSteps.tsx
-│   │       ├── LanguageSelector.tsx
-│   │       ├── TrustWallFeed.tsx
-│   │       └── ReactionButtons.tsx
-│   └── ml-service/                      ← Python FastAPI microservice
-│       ├── main.py                      ← FastAPI app
-│       ├── models/                      ← .pkl model files
-│       │   ├── phishing_model.pkl
-│       │   └── employment_fraud.pkl
-│       ├── predict.py                   ← Model loading + inference
-│       └── requirements.txt
+├── trust-layer/                         ← Next.js app (everything in one project)
+│   ├── app/
+│   │   ├── page.tsx                     ← Dashboard (main UI)
+│   │   ├── signup/page.tsx              ← User signup (enter email)
+│   │   ├── layout.tsx
+│   │   ├── globals.css
+│   │   └── api/
+│   │       ├── webhook/
+│   │       │   └── email/route.ts       ← POST — SendGrid webhook
+│   │       ├── emails/
+│   │       │   └── route.ts             ← GET — fetch processed emails
+│   │       └── simulate/
+│   │           └── route.ts             ← POST — simulate email for demo
+│   ├── components/
+│   │   ├── Dashboard.tsx                ← Main email feed
+│   │   ├── EmailRow.tsx                 ← Single email row (expandable)
+│   │   ├── RiskBadge.tsx                ← Color-coded Scam/Suspicious/Safe
+│   │   ├── AnalysisDetail.tsx           ← Expanded analysis view
+│   │   ├── StatsBar.tsx                 ← Top-level counters
+│   │   ├── SignupForm.tsx               ← Email signup form
+│   │   └── SimulateButton.tsx           ← Demo: trigger fake email
+│   ├── lib/
+│   │   ├── openai.ts                    ← OpenAI client config
+│   │   ├── supabase.ts                  ← Supabase client config
+│   │   ├── pipeline.ts                  ← Orchestrates Stage 0-4
+│   │   ├── rules.ts                     ← Stage 1: rule-based scoring
+│   │   ├── email-sender.ts             ← Resend: send alert emails
+│   │   └── types.ts                     ← TypeScript types
+│   ├── .env.local
+│   ├── next.config.js
+│   ├── tailwind.config.ts
+│   ├── tsconfig.json
+│   └── package.json
 ├── plan.md
 └── architecture.md
 ```
 
 ---
 
-## 14. Risks + Mitigations
+## 11. Demo Script (3 Minutes)
 
-| Risk | Mitigation |
-|------|-----------|
-| ML model too slow | Cache model in memory on FastAPI startup, not per-request |
-| HuggingFace models won't load | Test load locally before hackathon; have fallback Claude-only prompt |
-| ML service URL broken in demo | Run ML service locally + ngrok tunnel as backup |
-| Scope creep | Only 1 model (phishing) is required for the winning demo |
-| Claude API slow | Pre-warm with a dummy call before demo begins |
+### 0:00–0:30 — Hook
+> "Every year, immigrants in the US lose over $2 billion to scams. Not because they're careless — because scammers target people who don't know the system and are afraid to ask for help. We built TrustLayer — an automated shield that monitors your email and catches fraud before you fall for it."
+
+### 0:30–1:15 — Show the Pipeline
+1. Open the dashboard — show it's live, monitoring
+2. Click **"Simulate Email"** — paste a fake IRS phishing email
+3. Show the pipeline running:
+   - Language detected: English ✅
+   - Rule-based score: 72 ⚠️
+   - AI fraud score: 94 🔴
+   - Final verdict: **SCAM — 87% confidence**
+4. Email appears in dashboard with red badge
+
+### 1:15–1:45 — The Alert
+5. Show the alert email auto-sent to the user:
+   - Subject: "⚠️ TrustLayer: Scam Detected in Your Email"
+   - Warning with red flags highlighted
+   - 3 action steps: don't respond, block sender, report to FTC
+
+### 1:45–2:15 — Multilingual
+6. Simulate another email — this time a scam in **Spanish**
+7. Show: language detected as Spanish, translated for analysis, pipeline runs
+8. Alert email arrives — **written entirely in Spanish**
+9. **Say:** "One pipeline. Any language. The victim gets help in the language they actually understand."
+
+### 2:15–3:00 — Dashboard + Close
+10. Show dashboard with both emails logged, scores visible, alerts marked
+11. > "TrustLayer doesn't wait for victims to realize they're being scammed. It catches fraud automatically, explains it in their language, and tells them what to do — before they lose a dollar."
 
 ---
 
-## 15. Future Vision (Tell Judges This)
+## 12. Risks + Mitigations
 
-- **Active learning:** TrustWall community confirmations become retraining signals for models
-- **SMS integration:** Forward suspicious texts to TrustLayer's number → get a reply
-- **Browser extension:** Real-time email scanning inside Gmail / Outlook
-- **Model fine-tuning:** Retrain on immigrant-specific scam patterns (visa fraud, ICE impersonation)
-- **Partnership:** Deploy through community centers, ESL programs, legal aid orgs
-- **API access:** Let immigrant-serving nonprofits embed TrustLayer detection in their apps
+| Risk | Mitigation |
+|------|-----------|
+| OpenAI scores inconsistently | Combine with rule-based score (Stage 1) for stability. Tune the prompt. |
+| SendGrid DNS setup takes too long | "Simulate Email" button as demo fallback |
+| OpenAI API latency in demo | Pre-warm API before demo; have pre-recorded backup |
+| Supabase connection issues | Fallback to in-memory array for demo |
+| Scope creep | Dashboard + pipeline = the demo. Nothing else. |
+
+---
+
+## 13. What We Are NOT Building
+
+- ❌ Separate ML models / Python microservice
+- ❌ Browser extension
+- ❌ SMS / call / social media monitoring
+- ❌ Community feed / TrustWall
+- ❌ Gamification / points / badges
+- ❌ User auth with passwords (just email signup)
+
+**Focus: email pipeline + dashboard. That's the demo.**
+
+---
+
+## 14. Future Vision (Tell Judges This)
+
+- **Gmail/Outlook OAuth** — one-click "Connect your email" instead of manual forwarding
+- **Specialized ML models** — fine-tuned fraud classifiers for higher accuracy
+- **SMS + call monitoring** — expand beyond email to all channels
+- **Browser extension** — real-time scanning inside Gmail/Outlook UI
+- **Community layer** — users report scams, building a shared defense network
+- **Partnership with immigrant orgs** — deploy through community centers, ESL programs, legal aid
