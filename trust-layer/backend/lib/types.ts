@@ -1,46 +1,55 @@
 export type RiskLevel = "scam" | "suspicious" | "safe"
+export type Language = string
 
-export type Channel = "sms" | "email" | "call" | "social"
+export type LanguageDetectionResult = {
+  detected_language: string
+  language_name: string
+  is_english: boolean
+  english_text: string
+}
 
-export type Language = "en" | "zh" | "es" | "bn" | "ht"
+export type AIScoringResult = {
+  fraud_score: number
+  scam_type: string
+  red_flags: string[]
+  reasoning: string
+}
+
+export type User = {
+  id: string
+  email: string
+  forwarding_address: string
+  language_preference: string
+  created_at: string
+}
+
+export type ProcessedEmail = {
+  id: string
+  user_id: string
+  sender: string
+  subject: string
+  body: string
+  detected_language: string
+  language_name: string
+  english_text: string
+  received_at: string
+}
 
 export type AnalysisResult = {
+  id: string
+  email_id: string
+  rule_score: number
+  ai_score: number
+  final_score: number
   risk_level: RiskLevel
-  confidence: number
   scam_type: string
   red_flags: string[]
   explanation: string
   actions: string[]
+  alert_sent: boolean
+  analyzed_at: string
 }
 
-export type ScamPost = {
-  id: string
-  username: string
-  channel: Channel
-  language: string
-  snippet: string
-  scam_type: string
-  confidence: number
-  reactions: {
-    got_this_too: number
-    scam_confirmed: number
-    seems_safe: number
-  }
-  points_awarded: number
-  created_at: string
-}
-
-export const LANGUAGE_NAMES: Record<Language, string> = {
-  en: "English",
-  zh: "中文 (Chinese)",
-  es: "Español (Spanish)",
-  bn: "বাংলা (Bengali)",
-  ht: "Kreyòl Ayisyen (Haitian Creole)",
-}
-
-export const CHANNEL_LABELS: Record<Channel, string> = {
-  sms: "SMS / Text",
-  email: "Email",
-  call: "Phone Call",
-  social: "Social Media",
+export type EmailWithAnalysis = ProcessedEmail & {
+  analysis: AnalysisResult | null
 }
