@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
     const user = store.createUser({
       id: randomUUID(),
       email: email.trim(),
-      forwarding_address: `${forwardingId}@parse.trustlayer.app`,
+      forwarding_address: `${forwardingId}@parse.trustlayer.store`,
       language_preference: language,
       created_at: new Date().toISOString(),
     })

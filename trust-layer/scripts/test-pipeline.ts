@@ -29,7 +29,7 @@ import type { User } from "../lib/types"
 const TEST_USER: User = {
   id: "test-user-1",
   email: "test@example.com",
-  forwarding_address: "test@parse.trustlayer.app",
+  forwarding_address: "test@parse.trustlayer.store",
   language_preference: "en",
   created_at: new Date().toISOString(),
 }
