@@ -2,43 +2,53 @@
 
 import Link from "next/link"
 import { useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
+import { createClient } from "@/lib/supabase/client"
+import { Loader2 } from "lucide-react"
+import type { User } from "@supabase/supabase-js"
 
-type DemoUser = {
-  name: string
-  email: string
-}
-
-const STORAGE_KEY = "trustlayer_demo_user"
-
-function readDemoUser(): DemoUser | null {
-  if (typeof window === "undefined") return null
-
-  try {
-    const savedUser = window.localStorage.getItem(STORAGE_KEY)
-    return savedUser ? (JSON.parse(savedUser) as DemoUser) : null
-  } catch {
-    return null
-  }
-}
-
-export default function DemoAuthButton() {
-  const [user, setUser] = useState<DemoUser | null>(() => readDemoUser())
+export default function AuthButton() {
+  const [user, setUser] = useState<User | null>(null)
+  const [loading, setLoading] = useState(true)
+  const router = useRouter()
+  const supabase = createClient()
 
   useEffect(() => {
-    const handleStorageChange = () => setUser(readDemoUser())
-    window.addEventListener("storage", handleStorageChange)
-    window.addEventListener("trustlayer-demo-auth", handleStorageChange)
+    let mounted = true
+    async function getInitialUser() {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (mounted) {
+        setUser(user)
+        setLoading(false)
+      }
+    }
+    void getInitialUser()
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (mounted) {
+        setUser(session?.user ?? null)
+      }
+    })
 
     return () => {
-      window.removeEventListener("storage", handleStorageChange)
-      window.removeEventListener("trustlayer-demo-auth", handleStorageChange)
+      mounted = false
+      subscription.unsubscribe()
     }
-  }, [])
+  }, [supabase])
 
-  function handleLogout() {
-    window.localStorage.removeItem(STORAGE_KEY)
-    window.dispatchEvent(new Event("trustlayer-demo-auth"))
+  async function handleLogout() {
+    await supabase.auth.signOut()
     setUser(null)
+    router.push("/")
+    router.refresh()
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-8 w-20">
+        <Loader2 className="h-4 w-4 animate-spin text-slate-400" />
+      </div>
+    )
   }
 
   if (!user) {
@@ -55,7 +65,7 @@ export default function DemoAuthButton() {
   return (
     <div className="flex items-center gap-2 rounded-full border border-slate-200 bg-white p-1 shadow-sm">
       <span className="max-w-28 truncate px-3 py-1.5 text-xs font-bold text-slate-700">
-        {user.name}
+        {user.email?.split("@")[0]}
       </span>
       <button
         type="button"

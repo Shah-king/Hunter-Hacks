@@ -1,6 +1,7 @@
 // In-memory store — works without Supabase for demo.
 // Replace with real Supabase calls when env vars are set.
 import type { User, ProcessedEmail, AnalysisResult, EmailWithAnalysis } from "@/lib/types"
+import { createForwardingAddress } from "@/lib/ids"
 
 const users: User[] = [
   {
@@ -36,7 +37,7 @@ export const store = {
       user = this.createUser({
         id,
         email,
-        forwarding_address: `${id}@parse.trustlayer.app`,
+        forwarding_address: createForwardingAddress(),
         language_preference: "en",
         created_at: new Date().toISOString(),
       })

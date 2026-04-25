@@ -32,7 +32,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Identify user by forwarding address
-    // e.g. "123e4567-e89b-12d3-a456-426614174000@parse.trustlayer.app"
+    // e.g. "tl_abc123@parse.trustlayer.store"
     const forwardingAddress = to.split(",")[0].trim()
     const user = store.getUserByForwardingAddress(forwardingAddress)
 

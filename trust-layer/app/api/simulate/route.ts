@@ -55,8 +55,6 @@ export async function POST(req: NextRequest) {
     const { data: { user: authUser } } = await supabase.auth.getUser()
 
     const body = await req.json()
-    const scenario = (body.scenario ?? "irs") as keyof typeof SAMPLE_EMAILS
-    const sample = SAMPLE_EMAILS[scenario] ?? SAMPLE_EMAILS.irs
 
     let user = store.getAllUsers()[0]
     if (authUser) {
@@ -64,6 +62,20 @@ export async function POST(req: NextRequest) {
     }
 
     if (!user) return NextResponse.json({ error: "No users registered" }, { status: 404 })
+
+    // SECURITY: Support custom message analysis from the Quick Check UI
+    if (body.customMessage) {
+      const { email, analysis } = await runPipeline({
+        user,
+        sender: "direct-check@trustlayer.store",
+        subject: "Direct Message Analysis",
+        body: body.customMessage,
+      })
+      return NextResponse.json({ email, analysis, scenario: "custom" })
+    }
+
+    const scenario = (body.scenario ?? "irs") as keyof typeof SAMPLE_EMAILS
+    const sample = SAMPLE_EMAILS[scenario] ?? SAMPLE_EMAILS.irs
 
     const { email, analysis } = await runPipeline({
       user,

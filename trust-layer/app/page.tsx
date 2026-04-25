@@ -1,7 +1,8 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import {
   Activity,
   AlertTriangle,
@@ -17,6 +18,7 @@ import {
   TriangleAlert,
 } from "lucide-react"
 import FloatingActionButton from "./components/FloatingActionButton"
+import type { User, AnalysisResult } from "@/lib/types"
 
 const TRENDING_POST = {
   user: "Maya from Queens",
@@ -39,18 +41,16 @@ const ACTIVITY = [
 const SAMPLE_MESSAGE =
   "Final notice: your tax case will be sent to federal court unless you pay today with gift cards."
 
-const FORWARDING_ADDRESS = "demo@parse.trustlayer.store"
-
-function ProtectionStatus() {
+function ProtectionStatus({ user }: { user: User }) {
   const [copied, setCopied] = useState(false)
   const rows = [
     ["Email connected", "Ready", CheckCircle2, "text-emerald-600 bg-emerald-50"],
     ["Monitoring active", "Live", ShieldCheck, "text-sky-600 bg-sky-50"],
-    ["1 suspicious message today", "Watch", AlertTriangle, "text-amber-700 bg-amber-50"],
+    ["Protection on", "Active", AlertTriangle, "text-amber-700 bg-amber-50"],
   ] as const
 
   async function copyForwardingAddress() {
-    await navigator.clipboard.writeText(FORWARDING_ADDRESS)
+    await navigator.clipboard.writeText(user.forwarding_address)
     setCopied(true)
     window.setTimeout(() => setCopied(false), 1600)
   }
@@ -82,7 +82,7 @@ function ProtectionStatus() {
       <div className="mt-5 rounded-3xl border border-sky-100 bg-gradient-to-br from-sky-50 to-white p-4">
         <p className="text-xs font-black uppercase tracking-[0.14em] text-sky-500">Forwarding address</p>
         <div className="mt-3 flex flex-col gap-3 rounded-2xl bg-white p-3 shadow-sm sm:flex-row sm:items-center sm:justify-between">
-          <code className="break-all text-sm font-black text-slate-800">{FORWARDING_ADDRESS}</code>
+          <code className="break-all text-sm font-black text-slate-800">{user.forwarding_address}</code>
           <button
             type="button"
             onClick={copyForwardingAddress}
@@ -101,19 +101,32 @@ function ProtectionStatus() {
   )
 }
 
-function ScamAlertCard({ message }: { message: string }) {
+function ScamAlertCard({ message, analysis }: { message: string; analysis: AnalysisResult }) {
+  const isScam = analysis.risk_level === "scam"
+  const tone = isScam
+    ? "text-rose-600"
+    : analysis.risk_level === "suspicious"
+    ? "text-amber-600"
+    : "text-emerald-600"
+  const bg = isScam
+    ? "from-rose-100 to-pink-50"
+    : analysis.risk_level === "suspicious"
+    ? "from-amber-100 to-yellow-50"
+    : "from-emerald-100 to-teal-50"
+  const border = isScam ? "border-rose-100" : analysis.risk_level === "suspicious" ? "border-amber-100" : "border-emerald-100"
+
   return (
-    <section className="soft-card rounded-[28px] border-rose-100 p-5">
+    <section className={`soft-card rounded-[28px] p-5 ${border}`}>
       <div className="flex items-start justify-between gap-4">
         <div>
-          <p className="text-xs font-black uppercase tracking-[0.16em] text-rose-500">Scam Alert</p>
-          <h2 className="mt-2 text-2xl font-black text-slate-950">High risk detected</h2>
-          <p className="mt-2 text-sm leading-6 text-slate-600">
-            This message uses urgency, legal threats, and gift card payment. Real agencies do not ask for gift cards.
-          </p>
+          <p className={`text-xs font-black uppercase tracking-[0.16em] ${tone}`}>{analysis.scam_type}</p>
+          <h2 className="mt-2 text-2xl font-black text-slate-950">
+            {analysis.risk_level.charAt(0).toUpperCase() + analysis.risk_level.slice(1)} risk detected
+          </h2>
+          <p className="mt-2 text-sm leading-6 text-slate-600">{analysis.explanation}</p>
         </div>
-        <div className="rounded-3xl bg-gradient-to-br from-rose-100 to-pink-50 px-4 py-3 text-center text-rose-600">
-          <p className="text-3xl font-black">92%</p>
+        <div className={`rounded-3xl bg-gradient-to-br px-4 py-3 text-center ${tone} ${bg}`}>
+          <p className="text-3xl font-black">{analysis.final_score}%</p>
           <p className="text-xs font-black">confidence</p>
         </div>
       </div>
@@ -124,8 +137,11 @@ function ScamAlertCard({ message }: { message: string }) {
       </div>
 
       <div className="mt-5 grid gap-3 sm:grid-cols-2">
-        {["Do not respond", "Do not click links", "Do not send money", "Ask someone you trust"].map((step) => (
-          <div key={step} className="rounded-2xl bg-white p-3 text-sm font-bold text-slate-700 shadow-sm ring-1 ring-slate-100">
+        {analysis.actions.slice(0, 4).map((step) => (
+          <div
+            key={step}
+            className="rounded-2xl bg-white p-3 text-sm font-bold text-slate-700 shadow-sm ring-1 ring-slate-100"
+          >
             {step}
           </div>
         ))}
@@ -222,21 +238,100 @@ function RecentActivity() {
 }
 
 export default function Home() {
+  const router = useRouter()
+  const [user, setUser] = useState<User | null>(null)
+  const [initialLoading, setInitialLoading] = useState(true)
+
   const [message, setMessage] = useState(SAMPLE_MESSAGE)
   const [analyzing, setAnalyzing] = useState(false)
-  const [showResult, setShowResult] = useState(true)
+  const [showResult, setShowResult] = useState(false)
+  const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null)
 
-  function analyze() {
+  useEffect(() => {
+    let mounted = true
+    async function init() {
+      try {
+        const res = await fetch("/api/emails")
+        if (res.ok && mounted) {
+          const data = await res.json()
+          setUser(data.user || null)
+        }
+      } catch {
+        if (mounted) setUser(null)
+      } finally {
+        if (mounted) setInitialLoading(false)
+      }
+    }
+    void init()
+    return () => {
+      mounted = false
+    }
+  }, [])
+
+  async function analyze() {
+    if (!message.trim()) return
     setAnalyzing(true)
-    window.setTimeout(() => {
-      setShowResult(true)
+    setShowResult(false)
+    try {
+      const res = await fetch("/api/simulate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ customMessage: message }),
+      })
+      const data = await res.json()
+      if (res.ok) {
+        setAnalysisResult(data.analysis)
+        setShowResult(true)
+      }
+    } catch {
+      // Handle error quietly
+    } finally {
       setAnalyzing(false)
-    }, 450)
+    }
   }
 
   function simulate() {
     setMessage(SAMPLE_MESSAGE)
-    analyze()
+    void analyze()
+  }
+
+  if (initialLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-50">
+        <Loader2 className="h-8 w-8 animate-spin text-sky-500" />
+      </div>
+    )
+  }
+
+  if (!user) {
+    return (
+      <main className="flex min-h-[80vh] flex-col items-center justify-center bg-slate-50 px-4 text-center">
+        <div className="mb-8 inline-flex items-center justify-center rounded-2xl bg-sky-100 p-4">
+          <ShieldCheck className="h-12 w-12 text-sky-500" />
+        </div>
+        <h1 className="max-w-4xl text-4xl font-bold tracking-tight text-slate-950 sm:text-6xl">
+          Catch scams before they reach someone vulnerable.
+        </h1>
+        <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-600">
+          TrustLayer seamlessly integrates with your email to automatically detect, translate, and
+          explain scams in your native language before you fall victim.
+        </p>
+        <div className="mt-10 flex items-center justify-center gap-x-6">
+          <button
+            onClick={() => router.push("/login")}
+            className="rounded-xl bg-sky-500 px-6 py-3.5 text-sm font-semibold text-white shadow-sm transition hover:bg-sky-400"
+          >
+            Get started
+          </button>
+          <button
+            onClick={() => router.push("/login")}
+            className="text-sm font-semibold leading-6 text-slate-950 hover:text-sky-600 transition"
+          >
+            Login <span aria-hidden="true">→</span>
+          </button>
+        </div>
+      </main>
+    )
   }
 
   return (
@@ -251,7 +346,8 @@ export default function Home() {
             Catch scams before they reach someone vulnerable
           </h1>
           <p className="mt-5 max-w-2xl text-base leading-8 text-slate-600 sm:text-lg">
-            Paste a suspicious message, get a plain-language risk read, and share patterns with the people who need the warning most.
+            Paste a suspicious message, get a plain-language risk read, and share patterns with the
+            people who need the warning most.
           </p>
           <div className="mt-6 flex flex-wrap gap-3 text-sm font-semibold text-slate-600">
             <span className="rounded-full bg-white px-4 py-2 shadow-sm">multilingual support</span>
@@ -259,7 +355,7 @@ export default function Home() {
             <span className="rounded-full bg-white px-4 py-2 shadow-sm">forwarding active</span>
           </div>
         </div>
-        <ProtectionStatus />
+        <ProtectionStatus user={user} />
       </section>
 
       <section id="analyze" className="grid gap-6 lg:grid-cols-[1.02fr_0.98fr]">
@@ -294,8 +390,8 @@ export default function Home() {
           </button>
         </div>
 
-        {showResult ? (
-          <ScamAlertCard message={message} />
+        {showResult && analysisResult ? (
+          <ScamAlertCard message={message} analysis={analysisResult} />
         ) : (
           <div className="soft-card flex min-h-80 items-center justify-center rounded-[32px] p-8 text-center">
             <div>
