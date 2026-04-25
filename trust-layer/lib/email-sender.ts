@@ -16,7 +16,7 @@ export async function sendFraudAlert(params: {
     const resend = new Resend(process.env.RESEND_API_KEY)
 
     await resend.emails.send({
-      from: "TrustLayer <alerts@trustlayer.app>",
+      from: "TrustLayer <onboarding@resend.dev>",
       to: params.to,
       subject: `⚠️ TrustLayer: Scam Detected — Fraud Score ${params.fraudScore}/100`,
       text: `TrustLayer Fraud Alert\n\nA suspicious email from ${params.senderEmail} was detected.\n\n${params.warningText}\n\n---\nTrustLayer — Protecting you from scams`,
