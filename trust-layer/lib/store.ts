@@ -30,6 +30,19 @@ export const store = {
   getAllUsers(): User[] {
     return users
   },
+  getOrRegisterUser(id: string, email: string): User {
+    let user = this.getUserById(id)
+    if (!user) {
+      user = this.createUser({
+        id,
+        email,
+        forwarding_address: `${id}@parse.trustlayer.app`,
+        language_preference: "en",
+        created_at: new Date().toISOString(),
+      })
+    }
+    return user
+  },
 
   // Emails
   saveEmail(email: ProcessedEmail): ProcessedEmail {

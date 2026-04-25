@@ -10,8 +10,8 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
-      <body className="min-h-screen bg-slate-50 text-slate-950 antialiased">
+    <html lang="en" suppressHydrationWarning>
+      <body className="min-h-screen bg-slate-50 text-slate-950 antialiased" suppressHydrationWarning>
         <header className="sticky top-0 z-40 border-b border-slate-200/70 bg-white/80 px-4 py-3 backdrop-blur-xl">
           <div className="mx-auto flex max-w-6xl items-center justify-between gap-3">
             <Link href="/" className="flex min-w-0 items-center gap-3">
@@ -48,8 +48,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 <option value="bn">বাংলা</option>
                 <option value="ht">Kreyol</option>
               </select>
-              <Link href="/signup" className="rounded-full bg-slate-950 px-4 py-2 text-xs font-bold text-white shadow-lg shadow-slate-200 transition hover:-translate-y-0.5 hover:bg-slate-800 active:scale-95">
-                Connect
+              <Link href="/login" className="rounded-full bg-slate-950 px-4 py-2 text-xs font-bold text-white shadow-lg shadow-slate-200 transition hover:-translate-y-0.5 hover:bg-slate-800 active:scale-95">
+                Login
               </Link>
             </div>
           </div>

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { store } from "@/lib/store"
 import { runPipeline } from "@/lib/pipeline"
+import { createClient } from "@/lib/supabase/server"
 
 const SAMPLE_EMAILS = {
   irs: {
@@ -25,13 +26,43 @@ const SAMPLE_EMAILS = {
   },
 }
 
+// Simple global rate limiter for hackathon demo
+let simulateRequests = 0
+let lastReset = Date.now()
+const LIMIT_PER_MINUTE = 15
+
 export async function POST(req: NextRequest) {
   try {
+    // SECURITY 4: Prevent Memory Crash (OOM) by checking content length
+    const contentLength = Number(req.headers.get("content-length") || "0")
+    if (contentLength > 1024 * 1024) { // 1MB limit for simulate
+      return NextResponse.json({ error: "Payload too large" }, { status: 413 })
+    }
+
+    // SECURITY 3: API Credit Exhaustion (DoS Attack) Protection
+    const now = Date.now()
+    if (now - lastReset > 60000) {
+      simulateRequests = 0
+      lastReset = now
+    }
+    simulateRequests++
+    if (simulateRequests > LIMIT_PER_MINUTE) {
+      console.warn("[simulate] Rate limit exceeded")
+      return NextResponse.json({ error: "Rate limit exceeded. Please wait a minute." }, { status: 429 })
+    }
+
+    const supabase = await createClient()
+    const { data: { user: authUser } } = await supabase.auth.getUser()
+
     const body = await req.json()
     const scenario = (body.scenario ?? "irs") as keyof typeof SAMPLE_EMAILS
     const sample = SAMPLE_EMAILS[scenario] ?? SAMPLE_EMAILS.irs
 
-    const user = store.getAllUsers()[0]
+    let user = store.getAllUsers()[0]
+    if (authUser) {
+      user = store.getOrRegisterUser(authUser.id, authUser.email ?? "")
+    }
+
     if (!user) return NextResponse.json({ error: "No users registered" }, { status: 404 })
 
     const { email, analysis } = await runPipeline({
