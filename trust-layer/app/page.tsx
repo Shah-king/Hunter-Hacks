@@ -57,9 +57,13 @@ const SCENARIOS = [
 
 const TRENDING_POST = {
   user: "Maya from Queens",
+  initials: "MQ",
   tag: "IRS Scam",
+  risk: "High",
+  story: "Almost had a heart attack reading this 😭 thought I was going to jail for taxes",
   message:
     "Final notice: your tax case will be sent to federal court unless you pay today with gift cards.",
+  reactionLine: "Why is the IRS asking for Apple gift cards 💀",
   reactions: { hearts: 128, helpful: 74, warning: 39 },
 }
 
@@ -305,35 +309,71 @@ export default function Home() {
           )}
         </div>
 
-        <article className="social-card rounded-[34px] p-5 sm:p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-black text-slate-950">Trending Scam Today</p>
-              <p className="mt-1 text-xs font-semibold text-slate-400">shared by the community</p>
+        <article className="social-card overflow-hidden rounded-[34px] p-0">
+          <div className="bg-gradient-to-br from-pink-50 via-white to-sky-50 p-5 sm:p-6">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <div className="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1 text-xs font-black text-rose-500 shadow-sm">
+                  🔥 Trending in your community
+                </div>
+                <h2 className="mt-3 text-xl font-black tracking-tight text-slate-950">
+                  Trending Scam Today
+                </h2>
+              </div>
+              <div className="flex flex-col items-end gap-2">
+                <span className="rounded-full bg-rose-500 px-3 py-1 text-xs font-black text-white shadow-lg shadow-rose-100">
+                  THIS IS A SCAM
+                </span>
+                <span className="rounded-full bg-white px-3 py-1 text-xs font-black text-rose-600 shadow-sm">
+                  Risk: {TRENDING_POST.risk}
+                </span>
+              </div>
             </div>
-            <span className="rounded-full bg-rose-50 px-3 py-1 text-xs font-black text-rose-500">{TRENDING_POST.tag}</span>
+
+            <div className="mt-5 flex gap-3">
+              <div className="flex h-13 w-13 shrink-0 items-center justify-center rounded-3xl bg-gradient-to-br from-pink-300 to-sky-300 font-black text-white shadow-lg shadow-pink-100">
+                {TRENDING_POST.initials}
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="text-sm font-black text-slate-950">{TRENDING_POST.user}</p>
+                  <span className="rounded-full bg-white px-2.5 py-1 text-xs font-black text-slate-500 shadow-sm">
+                    just now
+                  </span>
+                </div>
+                <p className="mt-2 text-sm leading-6 text-slate-600">
+                  {TRENDING_POST.story}
+                </p>
+
+                <div className="mt-4 rounded-[26px] border border-rose-100 bg-white/85 p-4 shadow-sm">
+                  <p className="text-xs font-black uppercase tracking-[0.14em] text-rose-400">
+                    Scam message
+                  </p>
+                  <p className="mt-2 text-[15px] leading-7 text-slate-800">
+                    “{TRENDING_POST.message}”
+                  </p>
+                </div>
+
+                <p className="mt-3 rounded-3xl bg-slate-50 px-4 py-3 text-sm font-semibold leading-6 text-slate-600">
+                  {TRENDING_POST.reactionLine}
+                </p>
+              </div>
+            </div>
           </div>
-          <div className="mt-5 flex gap-3">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-pink-200 to-sky-200 font-black text-white">
-              MQ
-            </div>
-            <div>
-              <p className="text-sm font-bold text-slate-900">{TRENDING_POST.user}</p>
-              <p className="mt-2 rounded-3xl bg-slate-50 p-4 text-sm leading-6 text-slate-700">
-                {TRENDING_POST.message}
-              </p>
-            </div>
-          </div>
-          <div className="mt-5 flex flex-wrap items-center gap-3 text-sm font-bold text-slate-500">
-            <span className="inline-flex items-center gap-1 rounded-full bg-pink-50 px-3 py-2 text-pink-500">
+
+          <div className="flex flex-wrap items-center gap-3 border-t border-slate-100 bg-white px-5 py-4 text-sm font-bold text-slate-500 sm:px-6">
+            <span className="rounded-full bg-rose-50 px-3 py-2 text-xs font-black text-rose-500">
+              {TRENDING_POST.tag}
+            </span>
+            <button type="button" className="inline-flex items-center gap-1 rounded-full bg-pink-50 px-3 py-2 text-pink-500 transition hover:-translate-y-0.5">
               <Heart className="h-4 w-4" /> {TRENDING_POST.reactions.hearts}
-            </span>
-            <span className="inline-flex items-center gap-1 rounded-full bg-sky-50 px-3 py-2 text-sky-500">
+            </button>
+            <button type="button" className="inline-flex items-center gap-1 rounded-full bg-sky-50 px-3 py-2 text-sky-500 transition hover:-translate-y-0.5">
               <ThumbsUp className="h-4 w-4" /> {TRENDING_POST.reactions.helpful}
-            </span>
-            <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-3 py-2 text-amber-600">
+            </button>
+            <button type="button" className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-3 py-2 text-amber-600 transition hover:-translate-y-0.5">
               <TriangleAlert className="h-4 w-4" /> {TRENDING_POST.reactions.warning}
-            </span>
+            </button>
             <Link href="/social" className="ml-auto rounded-full bg-slate-950 px-4 py-2 text-xs text-white transition hover:-translate-y-0.5">
               View More
             </Link>
