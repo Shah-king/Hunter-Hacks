@@ -23,13 +23,29 @@ import { useT } from "@/app/components/useT"
 const SAMPLE_MESSAGE =
   "Final notice: your tax case will be sent to federal court unless you pay today with gift cards."
 
-function ProtectionStatus({ user }: { user: User }) {
+function ProtectionStatus({ user, totalScanned }: { user: User; totalScanned: number }) {
   const [copied, setCopied] = useState(false)
   const { t } = useT()
+  
   const rows = [
-    [t("email_connected"), t("ready"), CheckCircle2, "text-emerald-600 bg-emerald-50"],
-    [t("monitoring_active"), t("live"), ShieldCheck, "text-sky-600 bg-sky-50"],
-    [t("protection_on"), t("active"), AlertTriangle, "text-amber-700 bg-amber-50"],
+    [
+      t("email_connected"), 
+      user.forwarding_address ? t("ready") : "...", 
+      CheckCircle2, 
+      "text-emerald-600 bg-emerald-50"
+    ],
+    [
+      t("monitoring_active"), 
+      t("live"), 
+      ShieldCheck, 
+      "text-sky-600 bg-sky-50"
+    ],
+    [
+      t("protection_on"), 
+      totalScanned > 0 ? t("active") : t("ready"), 
+      AlertTriangle, 
+      "text-amber-700 bg-amber-50"
+    ],
   ] as const
 
   async function copyForwardingAddress() {
@@ -43,15 +59,23 @@ function ProtectionStatus({ user }: { user: User }) {
       <div className="flex items-center justify-between gap-4">
         <div>
           <h2 className="text-lg font-black text-slate-950">{t("protection_status")}</h2>
-          <p className="mt-1 text-sm text-slate-500 font-medium">{t("protection_active_desc")}</p>
+          <p className="mt-1 text-sm text-slate-500 font-medium">
+            {totalScanned > 0 ? t("protection_active_desc") : "Waiting for your first email forwarding..."}
+          </p>
         </div>
-        <div className="rounded-2xl bg-sky-50 p-3 text-sky-500 shadow-inner">
-          <ShieldCheck className="h-5 w-5" />
+        <div className="relative">
+          <div className="rounded-2xl bg-sky-50 p-3 text-sky-500 shadow-inner">
+            <ShieldCheck className="h-5 w-5" />
+          </div>
+          <div className="absolute -top-1 -right-1 flex h-3 w-3">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-sky-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-3 w-3 bg-sky-500"></span>
+          </div>
         </div>
       </div>
       <div className="mt-5 space-y-3">
-        {rows.map(([label, value, Icon, tone]) => (
-          <div key={label} className="flex items-center justify-between rounded-2xl bg-slate-50/80 px-4 py-3 border border-slate-100/50">
+        {rows.map(([label, value, Icon, tone], idx) => (
+          <div key={idx} className="flex items-center justify-between rounded-2xl bg-slate-50/80 px-4 py-3 border border-slate-100/50">
             <div className="flex items-center gap-3">
               <span className={`rounded-full p-2 ${tone}`}>
                 <Icon className="h-4 w-4" />
@@ -375,25 +399,6 @@ export default function DashboardContent() {
           <h1 className="text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">{t("protection_dashboard")}</h1>
           <p className="mt-2 text-sm font-bold text-slate-500">{t("active_for")} {user?.email}</p>
         </div>
-
-        <div className="flex flex-wrap gap-3">
-          <div className="rounded-3xl border border-sky-100 bg-white p-1 shadow-sm flex items-center">
-            {(["all", "scam", "suspicious"] as const).map((f) => {
-              const filterLabel = f === "all" ? t("filter_all") : f === "scam" ? t("filter_scam") : t("filter_suspicious")
-              return (
-                <button
-                  key={f}
-                  onClick={() => setFilter(f)}
-                  className={`rounded-full px-4 py-2 text-xs font-black uppercase tracking-wider transition ${
-                    filter === f ? "bg-slate-950 text-white shadow-md" : "text-slate-500 hover:text-slate-950"
-                  }`}
-                >
-                  {filterLabel}
-                </button>
-              )
-            })}
-          </div>
-        </div>
       </header>
 
       {/* Top Section: Quick Check & Status */}
@@ -426,7 +431,7 @@ export default function DashboardContent() {
           </button>
         </div>
 
-        {user && <ProtectionStatus user={user} />}
+        {user && <ProtectionStatus user={user} totalScanned={stats.total} />}
       </section>
 
       {/* Result Section */}
@@ -459,13 +464,32 @@ export default function DashboardContent() {
       {/* Main Inbox Feed */}
       <div className="mt-10 pb-20">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-black text-slate-950 flex items-center gap-3">
-            <div className="bg-sky-500 h-6 w-1.5 rounded-full" />
-            {t("security_feed")}
-          </h2>
-          <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-wider text-slate-400">
-            <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-            {t("live_monitoring")}
+          <div className="flex flex-col gap-1">
+            <h2 className="text-xl font-black text-slate-950 flex items-center gap-3">
+              <div className="bg-sky-500 h-6 w-1.5 rounded-full" />
+              {t("security_feed")}
+            </h2>
+            <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-wider text-slate-400">
+              <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+              {t("live_monitoring")}
+            </div>
+          </div>
+
+          <div className="rounded-3xl border border-sky-100 bg-white p-1 shadow-sm flex items-center">
+            {(["all", "scam", "suspicious"] as const).map((f) => {
+              const filterLabel = f === "all" ? t("filter_all") : f === "scam" ? t("filter_scam") : t("filter_suspicious")
+              return (
+                <button
+                  key={f}
+                  onClick={() => setFilter(f)}
+                  className={`rounded-full px-4 py-2 text-[10px] font-black uppercase tracking-wider transition ${
+                    filter === f ? "bg-slate-950 text-white shadow-md" : "text-slate-500 hover:text-slate-950"
+                  }`}
+                >
+                  {filterLabel}
+                </button>
+              )
+            })}
           </div>
         </div>
 
