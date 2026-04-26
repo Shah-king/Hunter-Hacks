@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation"
 import { useEffect, useState } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { useT } from "./useT"
+import type { AuthChangeEvent, Session } from "@supabase/supabase-js"
 
 export default function NavLinks() {
   const pathname = usePathname()
@@ -19,7 +20,7 @@ export default function NavLinks() {
     }
     checkAuth()
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event: AuthChangeEvent, session: Session | null) => {
       setIsLoggedIn(!!session?.user)
     })
 
