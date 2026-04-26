@@ -4,11 +4,13 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useEffect, useState } from "react"
 import { createClient } from "@/lib/supabase/client"
+import { useT } from "./useT"
 
 export default function NavLinks() {
   const pathname = usePathname()
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const supabase = createClient()
+  const { t } = useT()
 
   useEffect(() => {
     async function checkAuth() {
@@ -37,18 +39,18 @@ export default function NavLinks() {
     <nav className="hidden items-center rounded-full border border-slate-200 bg-slate-50 p-1 text-sm font-semibold shadow-sm md:flex">
       {!isLoggedIn && (
         <Link href="/" className={linkStyle("/")}>
-          Home
+          {t("nav_home")}
         </Link>
       )}
       {isLoggedIn && (
         <>
           <Link href="/dashboard" className={linkStyle("/dashboard")}>
-            Dashboard
+            {t("nav_dashboard")}
           </Link>
         </>
       )}
       <Link href="/social" className={linkStyle("/social")}>
-        Social
+        {t("nav_social")}
       </Link>
     </nav>
   )
