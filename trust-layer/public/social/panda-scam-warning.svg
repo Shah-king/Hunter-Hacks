@@ -1,0 +1,20 @@
+<svg width="960" height="540" viewBox="0 0 960 540" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="960" height="540" rx="36" fill="#F8FAFC"/>
+  <rect x="56" y="46" width="848" height="448" rx="34" fill="white" stroke="#E2E8F0" stroke-width="3"/>
+  <circle cx="296" cy="238" r="104" fill="#F8FAFC" stroke="#0F172A" stroke-width="8"/>
+  <circle cx="218" cy="148" r="42" fill="#0F172A"/>
+  <circle cx="374" cy="148" r="42" fill="#0F172A"/>
+  <ellipse cx="260" cy="224" rx="34" ry="40" fill="#0F172A" transform="rotate(-12 260 224)"/>
+  <ellipse cx="332" cy="224" rx="34" ry="40" fill="#0F172A" transform="rotate(12 332 224)"/>
+  <circle cx="268" cy="218" r="8" fill="white"/>
+  <circle cx="324" cy="218" r="8" fill="white"/>
+  <ellipse cx="296" cy="260" rx="18" ry="13" fill="#0F172A"/>
+  <path d="M268 294C286 310 306 310 324 294" stroke="#0F172A" stroke-width="8" stroke-linecap="round"/>
+  <rect x="464" y="126" width="328" height="254" rx="32" fill="#FEF2F2" stroke="#FECACA" stroke-width="4"/>
+  <text x="628" y="206" text-anchor="middle" font-family="Arial, 'Noto Sans SC', sans-serif" font-size="52" font-weight="900" fill="#991B1B">网络诈骗</text>
+  <text x="628" y="286" text-anchor="middle" font-family="Arial, 'Noto Sans SC', sans-serif" font-size="58" font-weight="900" fill="#0F172A">别信</text>
+  <rect x="516" y="326" width="224" height="34" rx="17" fill="#FEE2E2"/>
+  <text x="628" y="350" text-anchor="middle" font-family="Arial, 'Noto Sans SC', sans-serif" font-size="20" font-weight="800" fill="#B91C1C">先别转钱 先问家人</text>
+  <path d="M158 386C212 426 286 438 360 412" stroke="#BAE6FD" stroke-width="16" stroke-linecap="round"/>
+  <path d="M486 410C566 444 668 446 772 414" stroke="#FBCFE8" stroke-width="16" stroke-linecap="round"/>
+</svg>
