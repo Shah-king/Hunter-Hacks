@@ -42,7 +42,7 @@ const POSTS: SocialPostData[] = [
     points: 328,
     tag: "IRS Scam",
     risk: "High",
-    color: "from-pink-300 to-sky-300",
+    color: "from-[#ec4899] via-[#8b5cf6] to-[#38bdf8]",
     story: "Almost had a heart attack reading this 😭 thought I was going to jail for taxes",
     message:
       "Final notice: your tax case will be sent to federal court unless you pay today with gift cards.",
@@ -61,7 +61,7 @@ const POSTS: SocialPostData[] = [
     points: 391,
     tag: "Phishing",
     risk: "High",
-    color: "from-sky-300 to-violet-300",
+    color: "from-[#38bdf8] via-[#8b5cf6] to-[#ec4899]",
     story: "Got this message during standup 😭",
     message: "Your account will be locked unless you verify immediately.",
     reaction: "I haven’t even finished my Jira ticket 💀",
@@ -84,7 +84,7 @@ const POSTS: SocialPostData[] = [
     points: 412,
     tag: "Embassy Scam",
     risk: "High",
-    color: "from-rose-200 to-amber-200",
+    color: "from-[#ec4899] via-[#8b5cf6] to-[#38bdf8]",
     story: "我妈差点信了这个，还让我帮她转钱 😭",
     message: "您好，这里是中国大使馆，您的身份信息涉及案件，请立即配合调查。",
     reaction: "大使馆什么时候用微信联系了？？？",
@@ -107,7 +107,7 @@ const POSTS: SocialPostData[] = [
     points: 247,
     tag: "Job Scam",
     risk: "High",
-    color: "from-violet-200 to-pink-200",
+    color: "from-[#8b5cf6] to-[#ec4899]",
     story: "The job sounded cute until they asked for my routing number before the interview.",
     message: "Remote assistant role. $85/hr. Send SSN and bank details today to reserve your position.",
     reaction: "No interview, just vibes and identity theft.",
@@ -125,7 +125,7 @@ const POSTS: SocialPostData[] = [
     points: 289,
     tag: "Delivery Scam",
     risk: "Medium",
-    color: "from-amber-200 to-pink-200",
+    color: "from-[#ec4899] to-[#38bdf8]",
     story: "The fake delivery text arrived 2 minutes after I ordered noodles. Suspicious timing.",
     message: "Package delivery failed. Pay $1.99 redelivery fee at parcel-help-fast.example.",
     reaction: "The package was still at the restaurant, bestie.",
@@ -143,7 +143,7 @@ const POSTS: SocialPostData[] = [
     points: 193,
     tag: "Bank Phishing",
     risk: "Medium",
-    color: "from-emerald-200 to-sky-200",
+    color: "from-[#38bdf8] to-[#8b5cf6]",
     story: "Looked official for 0.5 seconds, then I saw the weird URL.",
     message: "Your account is frozen. Verify at wells-farg0-secure-login.example within 24 hours.",
     reaction: "The zero in Fargo was doing too much.",
@@ -167,81 +167,85 @@ function SocialPost({ post }: { post: SocialPostData }) {
   }
 
   return (
-    <article className={`overflow-hidden rounded-[20px] bg-white shadow-[0_4px_12px_rgba(15,23,42,0.05)] transition hover:-translate-y-0.5 hover:shadow-[0_8px_18px_rgba(15,23,42,0.07)] ${post.trending ? "ring-1 ring-pink-100" : ""}`}>
-      <div className="p-4 sm:p-5">
+    <article className={`overflow-hidden rounded-[20px] bg-white shadow-[0_6px_20px_rgba(0,0,0,0.06)] transition hover:-translate-y-0.5 hover:shadow-[0_8px_22px_rgba(0,0,0,0.08)] ${post.trending ? "ring-1 ring-pink-100" : ""}`}>
+      <div className="p-4">
         <div className="flex items-start justify-between gap-4">
           <div className="flex gap-3">
-            <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-br ${post.color} text-sm font-black text-white shadow-sm`}>
+            <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br ${post.color} text-sm font-bold text-white shadow-sm`}>
               {post.initials}
             </div>
             <div>
               <div className="flex flex-wrap items-center gap-2">
-                <p className="font-bold text-slate-950">{post.user}</p>
-                <span className="rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-bold text-amber-600">
+                <p className="text-[16px] font-bold leading-tight text-zinc-950">{post.user}</p>
+                <span className="rounded-full bg-pink-50 px-2.5 py-1 text-[11px] font-bold text-[#ec4899]">
                   {post.points} pts
                 </span>
               </div>
-              <p className="mt-1 text-xs font-medium text-slate-400">{post.time}</p>
-              <p className="mt-1 max-w-[19rem] text-xs font-medium leading-5 text-slate-500">
+              <p className="mt-1 text-[12px] font-medium leading-[1.4] text-zinc-400">{post.time}</p>
+              <p className="mt-1 max-w-[19rem] text-[12px] font-medium leading-[1.4] text-zinc-500">
                 👀 {post.seenCount} · {post.location}
               </p>
             </div>
           </div>
           <div className="flex shrink-0 flex-col items-end gap-1.5">
             {post.trending ? (
-              <span className="rounded-full bg-gradient-to-r from-pink-100 via-purple-100 to-sky-100 px-2.5 py-1 text-[11px] font-bold text-rose-500">
+              <span className="rounded-full bg-gradient-to-r from-pink-100 via-purple-100 to-sky-100 px-2.5 py-1 text-[11px] font-bold text-[#ec4899]">
                 🔥 Trending
               </span>
             ) : null}
-            <span className="rounded-full bg-gradient-to-r from-pink-50 to-sky-50 px-2.5 py-1 text-[11px] font-bold text-slate-600">
+            <span className="rounded-full bg-gradient-to-r from-pink-50 to-sky-50 px-2.5 py-1 text-[11px] font-bold text-zinc-600">
               {post.tag}
             </span>
-            <span className="rounded-full bg-rose-50 px-2.5 py-1 text-[11px] font-bold text-rose-500">
+            <span className="rounded-full bg-[#fee2e2] px-2.5 py-1 text-[11px] font-bold text-[#ec4899]">
               Risk: {post.risk}
             </span>
           </div>
         </div>
 
-        <p className="mt-5 text-[15px] font-bold leading-6 text-slate-800">{post.story}</p>
-        <p className="mt-1.5 text-sm font-medium leading-5 text-slate-500">{post.emotionalContext}</p>
+        <p className="mt-5 text-[15px] font-semibold leading-[1.4] text-zinc-800">{post.story}</p>
 
-        <div className="mt-4 rounded-2xl bg-slate-50 px-4 py-3">
-          <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-slate-400">Scam message</p>
-          <p className="mt-2 text-[14px] leading-6 text-slate-800">“{post.message}”</p>
+        <div className="mt-3 max-w-[520px] rounded-xl bg-zinc-100 p-[10px]">
+          <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-zinc-400">Scam message</p>
+          <p className="mt-1.5 text-[14px] leading-[1.4] text-zinc-800">“{post.message}”</p>
         </div>
 
-        <p className="mt-3 max-w-xl rounded-2xl bg-gradient-to-br from-pink-50 to-sky-50 px-4 py-3 text-sm font-medium leading-5 text-slate-600">
-          {post.reaction}
-        </p>
-
-        <p className="mt-3 rounded-2xl bg-rose-50 px-4 py-3 text-sm font-semibold leading-5 text-rose-700">
+        <p className="mt-3 max-w-[520px] rounded-xl bg-[#fee2e2] p-[10px] text-[14px] font-semibold leading-[1.4] text-rose-700">
           {post.explanation}
         </p>
 
+        <div className="mt-3 max-w-[520px] rounded-2xl p-3 text-[14px] leading-[1.4]">
+          <p className="mb-2 rounded-xl bg-white px-3 py-2.5 text-zinc-600 shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
+            {post.emotionalContext}
+          </p>
+          <p className="mb-2 rounded-xl bg-gradient-to-br from-pink-50 to-sky-50 px-3 py-2.5 text-zinc-600 shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
+            {post.reaction}
+          </p>
+        </div>
+
         {post.memeImage ? (
-          <div className="mt-4 max-w-xl rounded-[18px] bg-white p-2.5 shadow-[0_2px_8px_rgba(15,23,42,0.05)]">
-            <p className="mb-2 px-1 text-xs font-semibold text-slate-500">💬 Common reaction in community</p>
+          <div className="mt-3 max-w-[520px] rounded-2xl bg-white p-3 shadow-[0_6px_20px_rgba(0,0,0,0.06)]">
+            <p className="mb-2 px-1 text-[12px] font-medium leading-[1.4] text-zinc-500">💬 Common reaction in community</p>
             <Image
               src={post.memeImage.src}
               alt={post.memeImage.alt}
               width={960}
               height={540}
-              className="h-auto w-full rounded-2xl object-cover"
+              className="max-h-[180px] w-full rounded-xl object-cover"
             />
-            <p className="mt-2 px-1 text-xs font-medium leading-5 text-slate-500">
+            <p className="mt-2 px-1 text-[12px] font-medium leading-[1.4] text-zinc-500">
               This scam format has been reported multiple times
             </p>
           </div>
         ) : null}
       </div>
 
-      <div className="flex max-w-2xl flex-wrap gap-2 px-4 pb-4 sm:px-5">
+      <div className="flex max-w-[520px] flex-wrap gap-2 px-4 pb-4 text-[12px]">
         <button
           type="button"
           onClick={() => react("love")}
           disabled={!!reaction}
-          className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold transition active:scale-95 ${
-            reaction === "love" ? "bg-pink-100 text-pink-600" : "bg-slate-50 text-slate-500 hover:bg-pink-50 hover:text-pink-600"
+          className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-bold transition active:scale-95 ${
+            reaction === "love" ? "bg-pink-100 text-[#ec4899]" : "bg-zinc-100 text-zinc-500 hover:bg-pink-50 hover:text-[#ec4899]"
           }`}
         >
           ❤️ Helpful {counts.love}
@@ -250,8 +254,8 @@ function SocialPost({ post }: { post: SocialPostData }) {
           type="button"
           onClick={() => react("got")}
           disabled={!!reaction}
-          className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold transition active:scale-95 ${
-            reaction === "got" ? "bg-sky-100 text-sky-600" : "bg-slate-50 text-slate-500 hover:bg-sky-50 hover:text-sky-600"
+          className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-bold transition active:scale-95 ${
+            reaction === "got" ? "bg-sky-100 text-[#38bdf8]" : "bg-zinc-100 text-zinc-500 hover:bg-sky-50 hover:text-[#38bdf8]"
           }`}
         >
           🙋 I got this too {counts.got}
@@ -260,8 +264,8 @@ function SocialPost({ post }: { post: SocialPostData }) {
           type="button"
           onClick={() => react("confirmed")}
           disabled={!!reaction}
-          className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold transition active:scale-95 ${
-            reaction === "confirmed" ? "bg-rose-100 text-rose-600" : "bg-slate-50 text-slate-500 hover:bg-rose-50 hover:text-rose-600"
+          className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-bold transition active:scale-95 ${
+            reaction === "confirmed" ? "bg-rose-100 text-[#ec4899]" : "bg-zinc-100 text-zinc-500 hover:bg-rose-50 hover:text-[#ec4899]"
           }`}
         >
           ⚠️ Scam confirmed {counts.confirmed}
@@ -272,40 +276,62 @@ function SocialPost({ post }: { post: SocialPostData }) {
 }
 
 export default function SocialPage() {
+  const featuredPost = POSTS[0]
+
   return (
-    <main className="min-h-screen bg-[#FAFAFA] px-4 py-8 sm:px-6 lg:px-8">
-      <section className="mx-auto max-w-5xl rounded-[24px] bg-gradient-to-br from-pink-50 via-white to-sky-50 p-6 shadow-[0_4px_12px_rgba(15,23,42,0.05)] sm:p-8">
-        <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+    <main className="min-h-screen bg-white px-4 py-8 sm:px-6 lg:px-8">
+      <section className="mx-auto max-w-5xl rounded-[24px] bg-[linear-gradient(180deg,#ffffff_0%,#fdf2f8_100%)] p-6 shadow-[0_6px_20px_rgba(0,0,0,0.06)] sm:p-8">
+        <div className="grid gap-8 lg:grid-cols-[1fr_360px] lg:items-center">
           <div>
-            <div className="inline-flex items-center gap-2 rounded-full bg-white/80 px-3 py-1 text-xs font-bold text-sky-600 shadow-sm">
+            <div className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 text-xs font-bold text-[#ec4899] shadow-sm">
               <Sparkles className="h-3.5 w-3.5" />
               TrustWall social feed
             </div>
-            <h1 className="mt-4 text-4xl font-black tracking-tight text-slate-950 sm:text-5xl">
-              Scams people are seeing right now
+            <h1 className="mt-5 max-w-2xl text-[40px] font-bold leading-[1.05] tracking-tight text-zinc-950 sm:text-[48px]">
+              Catch scams before they catch your family.
             </h1>
-            <p className="mt-4 max-w-2xl text-base leading-7 text-slate-600">
-              A community feed for patterns, warnings, and reassurance. Friendly enough to share, useful enough to act on.
+            <p className="mt-4 text-lg font-medium leading-[1.4] text-zinc-600">
+              Simple. Clear. Community-powered.
             </p>
+            <Link href="/#analyze" className="mt-6 inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-[#ec4899] via-[#8b5cf6] to-[#38bdf8] px-5 py-3 text-sm font-bold text-white shadow-[0_6px_20px_rgba(0,0,0,0.06)] transition hover:-translate-y-0.5">
+              <ShieldCheck className="h-4 w-4" />
+              Try a message
+            </Link>
           </div>
-          <Link href="/#analyze" className="inline-flex items-center justify-center gap-2 rounded-full bg-slate-950 px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:-translate-y-0.5">
-            <ShieldCheck className="h-4 w-4" />
-            Check a message
-          </Link>
+
+          <div className="rotate-2 rounded-[20px] bg-white p-4 shadow-[0_18px_38px_rgba(0,0,0,0.10)]">
+            <div className="flex items-center gap-3">
+              <div className={`flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br ${featuredPost.color} text-sm font-bold text-white`}>
+                {featuredPost.initials}
+              </div>
+              <div>
+                <p className="text-[16px] font-bold leading-tight text-zinc-950">{featuredPost.user}</p>
+                <p className="text-[12px] font-medium leading-[1.4] text-zinc-400">{featuredPost.location}</p>
+              </div>
+            </div>
+            <p className="mt-4 text-[14px] font-semibold leading-[1.4] text-zinc-800">{featuredPost.story}</p>
+            <div className="mt-3 rounded-xl bg-zinc-100 p-[10px]">
+              <p className="text-[14px] leading-[1.4] text-zinc-700">“{featuredPost.message}”</p>
+            </div>
+            <div className="mt-3 flex gap-2 text-[12px] font-bold text-zinc-500">
+              <span className="rounded-full bg-pink-50 px-3 py-1.5">❤️ {featuredPost.reactions.love}</span>
+              <span className="rounded-full bg-rose-50 px-3 py-1.5">⚠️ {featuredPost.reactions.confirmed}</span>
+            </div>
+          </div>
         </div>
       </section>
 
-      <section className="mx-auto mt-6 grid max-w-5xl gap-5 lg:grid-cols-[minmax(0,1fr)_260px]">
-        <div className="space-y-5">
+      <section className="mx-auto mt-8 grid max-w-5xl gap-6 lg:grid-cols-[minmax(0,1fr)_260px]">
+        <div className="space-y-6">
           {POSTS.map((post) => (
             <SocialPost key={post.id} post={post} />
           ))}
         </div>
 
-        <aside className="h-fit rounded-[20px] bg-white p-4 shadow-[0_4px_12px_rgba(15,23,42,0.05)]">
+        <aside className="h-fit rounded-[20px] bg-white p-4 shadow-[0_6px_20px_rgba(0,0,0,0.06)]">
           <div className="flex items-center gap-2">
-            <Flame className="h-5 w-5 text-rose-400" />
-            <p className="font-bold text-slate-950">Community pulse</p>
+            <Flame className="h-5 w-5 text-[#ec4899]" />
+            <p className="font-bold text-zinc-950">Community pulse</p>
           </div>
           <div className="mt-4 space-y-2.5">
             {[
@@ -313,13 +339,13 @@ export default function SocialPage() {
               ["41", "confirmed scams"],
               ["5", "languages supported"],
             ].map(([value, label]) => (
-              <div key={label} className="rounded-2xl bg-slate-50 px-4 py-3">
-                <p className="text-xl font-black text-slate-950">{value}</p>
-                <p className="text-xs font-medium text-slate-500">{label}</p>
+              <div key={label} className="rounded-2xl bg-zinc-50 px-4 py-3">
+                <p className="text-xl font-black text-zinc-950">{value}</p>
+                <p className="text-xs font-medium text-zinc-500">{label}</p>
               </div>
             ))}
           </div>
-          <p className="mt-4 rounded-2xl bg-gradient-to-br from-pink-50 to-sky-50 p-4 text-sm leading-6 text-slate-600">
+          <p className="mt-4 rounded-2xl bg-gradient-to-br from-pink-50 to-sky-50 p-4 text-sm leading-[1.4] text-zinc-600">
             When one person shares a scam, everyone else gets a little safer.
           </p>
         </aside>
