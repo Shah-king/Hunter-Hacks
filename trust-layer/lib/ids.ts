@@ -15,8 +15,9 @@ export function createId(type: IdType): string {
   return `${PREFIXES[type]}_${nanoid(16)}`
 }
 
-// Forwarding address: tl_<short-id>@parse.trustlayer.store
+// Forwarding address: tl_<short-id>@<domain>
 export function createForwardingAddress(): string {
   const id = nanoid(12).toLowerCase()
-  return `tl_${id}@parse.trustlayer.store`
+  const domain = process.env.NEXT_PUBLIC_FORWARDING_DOMAIN || "parse.trustlayer.app"
+  return `tl_${id}@${domain}`
 }

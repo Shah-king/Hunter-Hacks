@@ -42,7 +42,7 @@ export async function runPipeline(params: {
     english_text: lang.english_text,
     received_at: new Date().toISOString(),
   }
-  store.saveEmail(email)
+  await store.saveEmail(email)
 
   // Stage 1: Rule-based scoring on english_text
   const { score: ruleScore, hits: ruleHits } = calculateRuleScore(lang.english_text)
@@ -101,7 +101,7 @@ export async function runPipeline(params: {
     alert_sent: alertSent,
     analyzed_at: new Date().toISOString(),
   }
-  store.saveResult(analysis)
+  await store.saveResult(analysis)
 
   return { email, analysis }
 }

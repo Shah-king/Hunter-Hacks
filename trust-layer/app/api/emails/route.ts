@@ -10,11 +10,11 @@ export async function GET() {
 
   let user = null
   if (authUser) {
-    user = store.getOrRegisterUser(authUser.id, authUser.email ?? "")
+    user = await store.getOrRegisterUser(authUser.id, authUser.email ?? "")
   }
 
-  const emails = store.getAllEmailsWithAnalysis()
-  const stats = store.getStats()
+  const emails = await store.getAllEmailsWithAnalysis()
+  const stats = await store.getStats()
   return NextResponse.json({ emails, stats, user })
 }
 

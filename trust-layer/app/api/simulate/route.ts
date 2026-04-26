@@ -56,9 +56,9 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json()
 
-    let user = store.getAllUsers()[0]
+    let user = (await store.getAllUsers())[0]
     if (authUser) {
-      user = store.getOrRegisterUser(authUser.id, authUser.email ?? "")
+      user = await store.getOrRegisterUser(authUser.id, authUser.email ?? "")
     }
 
     if (!user) return NextResponse.json({ error: "No users registered" }, { status: 404 })

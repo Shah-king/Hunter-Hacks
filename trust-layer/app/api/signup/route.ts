@@ -11,13 +11,14 @@ export async function POST(req: NextRequest) {
     }
 
     // Check if user already exists
-    const existing = store.getAllUsers().find((u) => u.email === email)
+    const users = await store.getAllUsers()
+    const existing = users.find((u) => u.email === email)
     if (existing) {
       return NextResponse.json({ forwarding_address: existing.forwarding_address })
     }
 
     // Create new user with clean prefixed IDs
-    const user = store.createUser({
+    const user = await store.createUser({
       id: createId("user"),
       email: email.trim(),
       forwarding_address: createForwardingAddress(),
