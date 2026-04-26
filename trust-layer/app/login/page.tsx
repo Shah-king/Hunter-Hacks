@@ -25,14 +25,14 @@ export default function LoginPage() {
           password,
         })
         if (error) throw error
-        router.push("/")
+        router.push("/dashboard")
       } else {
         const { error } = await supabase.auth.signInWithPassword({
           email,
           password,
         })
         if (error) throw error
-        router.push("/")
+        router.push("/dashboard")
       }
     } catch (err: unknown) {
       if (err instanceof Error) {
