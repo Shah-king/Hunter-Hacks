@@ -53,6 +53,7 @@ export async function runPipeline(params: {
 
   // Stage 3: Aggregate scores
   const { finalScore, riskLevel } = aggregateScores(ruleScore, aiResult.fraud_score)
+  console.log(`[pipeline] Aggregated Score: ${finalScore}, Risk Level: ${riskLevel}`)
 
   // Stage 4: Generate and send warning (only if scam or suspicious)
   let alertSent = false
@@ -60,6 +61,7 @@ export async function runPipeline(params: {
   let actions: string[] = []
 
   if (riskLevel !== "safe") {
+    console.log(`[pipeline] Non-safe risk detected. Generating warning email in ${outputLanguage ?? lang.language_name}...`)
     const warning = await generateWarningEmail(
       body,
       aiResult.red_flags,
@@ -70,6 +72,7 @@ export async function runPipeline(params: {
     explanation = warning
 
     if (riskLevel === "scam") {
+      console.log(`[pipeline] SCAM level reached. Triggering Resend alert to ${user.email}...`)
       actions = [
         "Do not reply to this email or click any links",
         "Block the sender immediately",
@@ -83,7 +86,9 @@ export async function runPipeline(params: {
         senderEmail: sender,
         fraudScore: finalScore,
       })
+      console.log(`[pipeline] Resend alertSent status: ${alertSent}`)
     } else {
+      console.log(`[pipeline] SUSPICIOUS level. Skipping Resend alert (only sent for SCAM).`)
       actions = ["Be cautious before responding", "Verify the sender's identity through official channels"]
     }
   }
