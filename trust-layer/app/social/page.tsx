@@ -156,6 +156,14 @@ const POSTS: SocialPostData[] = [
   },
 ]
 
+const COMMUNITY_COMMENTS = [
+  { text: "我妈差点信了这个 😭", className: "ml-0" },
+  { text: "Why is the IRS asking for gift cards 💀", className: "ml-auto" },
+  { text: "Esto parece súper falso 😂", className: "ml-6" },
+  { text: "এটা তো পুরো স্ক্যাম 😭", className: "ml-auto mr-8" },
+  { text: "Sa a pa fè sans ditou 💀", className: "ml-2" },
+]
+
 function SocialPost({ post }: { post: SocialPostData }) {
   const [reaction, setReaction] = useState<"got" | "confirmed" | "love" | null>(null)
   const [counts, setCounts] = useState(post.reactions)
@@ -214,12 +222,15 @@ function SocialPost({ post }: { post: SocialPostData }) {
         </p>
 
         <div className="mt-3 max-w-[520px] rounded-2xl p-3 text-[14px] leading-[1.4]">
-          <p className="mb-2 rounded-xl bg-white px-3 py-2.5 text-zinc-600 shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
-            {post.emotionalContext}
-          </p>
-          <p className="mb-2 rounded-xl bg-gradient-to-br from-pink-50 to-sky-50 px-3 py-2.5 text-zinc-600 shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
-            {post.reaction}
-          </p>
+          <p className="mb-2 text-[12px] font-medium leading-[1.4] text-zinc-400">💬 What people are saying</p>
+          {COMMUNITY_COMMENTS.slice(0, post.memeImage ? 5 : 3).map((comment) => (
+            <p
+              key={comment.text}
+              className={`mb-2 max-w-[240px] rounded-[18px] bg-white px-3.5 py-2.5 text-[14px] leading-[1.4] text-zinc-600 shadow-[0_4px_10px_rgba(0,0,0,0.04)] ${comment.className}`}
+            >
+              {comment.text}
+            </p>
+          ))}
         </div>
 
         {post.memeImage ? (
@@ -316,6 +327,17 @@ export default function SocialPage() {
             <div className="mt-3 flex gap-2 text-[12px] font-bold text-zinc-500">
               <span className="rounded-full bg-pink-50 px-3 py-1.5">❤️ {featuredPost.reactions.love}</span>
               <span className="rounded-full bg-rose-50 px-3 py-1.5">⚠️ {featuredPost.reactions.confirmed}</span>
+            </div>
+            <div className="mt-4">
+              <p className="mb-2 text-[12px] font-medium leading-[1.4] text-zinc-400">💬 What people are saying</p>
+              {COMMUNITY_COMMENTS.slice(0, 3).map((comment) => (
+                <p
+                  key={comment.text}
+                  className={`mb-2 max-w-[240px] rounded-[18px] bg-white px-3.5 py-2.5 text-[14px] leading-[1.4] text-zinc-600 shadow-[0_4px_10px_rgba(0,0,0,0.04)] ${comment.className}`}
+                >
+                  {comment.text}
+                </p>
+              ))}
             </div>
           </div>
         </div>

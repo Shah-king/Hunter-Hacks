@@ -12,6 +12,13 @@ import {
 
 export default function LandingContent() {
   const router = useRouter()
+  const communityComments = [
+    { text: "我妈差点信了这个 😭", className: "ml-auto" },
+    { text: "Why is the IRS asking for gift cards 💀", className: "ml-0" },
+    { text: "Esto parece súper falso 😂", className: "ml-8" },
+    { text: "এটা তো পুরো স্ক্যাম 😭", className: "ml-auto mr-5" },
+    { text: "Sa a pa fè sans ditou 💀", className: "ml-3" },
+  ]
 
   return (
     <main className="mx-auto w-full max-w-6xl px-4 py-12 sm:px-6 lg:px-8">
@@ -100,12 +107,17 @@ export default function LandingContent() {
             </button>
           </div>
 
-          <div className="space-y-3">
-            <div className="ml-auto max-w-[290px] rounded-[18px] bg-white px-4 py-3 text-sm font-semibold leading-6 text-slate-700 shadow-[0_8px_20px_rgba(15,23,42,0.06)]">
-              我妈差点信了这个 😭
-            </div>
-            <div className="max-w-[310px] rounded-[18px] bg-white px-4 py-3 text-sm font-semibold leading-6 text-slate-700 shadow-[0_8px_20px_rgba(15,23,42,0.06)]">
-              Why is the IRS asking for gift cards 💀
+          <div>
+            <p className="mb-3 text-xs font-semibold text-slate-400">💬 What people are saying</p>
+            <div className="space-y-2">
+              {communityComments.map((comment) => (
+                <div
+                  key={comment.text}
+                  className={`max-w-[240px] rounded-[18px] bg-white px-3.5 py-2.5 text-sm font-semibold leading-[1.4] text-slate-700 shadow-[0_4px_10px_rgba(0,0,0,0.04)] ${comment.className}`}
+                >
+                  {comment.text}
+                </div>
+              ))}
             </div>
           </div>
         </div>
