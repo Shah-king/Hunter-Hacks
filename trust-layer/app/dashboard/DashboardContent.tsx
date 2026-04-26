@@ -16,7 +16,7 @@ import {
   Search,
   Copy,
 } from "lucide-react"
-import type { EmailWithAnalysis, User, AnalysisResult } from "@/lib/types"
+import type { EmailWithAnalysis, User, AnalysisResult, RiskLevel } from "@/lib/types"
 
 const SAMPLE_MESSAGE =
   "Final notice: your tax case will be sent to federal court unless you pay today with gift cards."

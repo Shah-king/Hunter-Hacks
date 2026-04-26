@@ -24,7 +24,7 @@ export default function AuthButton() {
     }
     void getInitialUser()
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event: unknown, session: { user: User } | null) => {
       if (mounted) {
         setUser(session?.user ?? null)
       }

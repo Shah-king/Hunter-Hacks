@@ -17,7 +17,7 @@ export default function NavLinks() {
     }
     checkAuth()
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event: unknown, session: { user: unknown } | null) => {
       setIsLoggedIn(!!session?.user)
     })
 
