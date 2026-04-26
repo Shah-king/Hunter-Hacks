@@ -27,25 +27,31 @@ export async function POST(req: NextRequest) {
     const subject = (formData.get("subject") as string) ?? "(no subject)"
     const body = (formData.get("text") as string) ?? (formData.get("html") as string) ?? ""
 
+    console.log(`[webhook/email] Received email: to=${toHeader}, from=${from}, subject=${subject}`)
+
     if (!body.trim()) {
+      console.error("[webhook/email] Rejected: Empty body")
       return NextResponse.json({ error: "Empty email body" }, { status: 400 })
     }
 
     // Identify user by forwarding address
-    // SendGrid's "to" field can be: "Name" <address@domain.com>
-    // We use a regex to extract just the email address part.
     const emailMatch = toHeader.match(/<([^>]+)>|([^\s,<>]+@[^\s,<>]+)/)
     const forwardingAddress = (emailMatch ? (emailMatch[1] || emailMatch[2]) : toHeader).trim().toLowerCase()
+    
+    console.log(`[webhook/email] Extracted forwarding address: ${forwardingAddress}`)
 
     const user = await store.getUserByForwardingAddress(forwardingAddress)
 
     if (!user) {
+      console.error(`[webhook/email] Rejected: No user found for ${forwardingAddress}`)
       // SECURITY: If the destination address doesn't match a known user, drop it.
-      console.warn(`[webhook/email] Dropping email to unknown address: ${forwardingAddress}`)
       return NextResponse.json({ error: "Unknown destination address" }, { status: 404 })
     }
 
+    console.log(`[webhook/email] Routing email to user: ${user.id} (${user.email})`)
+
     const { email, analysis } = await runPipeline({ user, sender: from, subject, body })
+    console.log(`[webhook/email] Success: Processed email ${email.id}, Risk: ${analysis.risk_level}`)
     return NextResponse.json({ email, analysis })
   } catch (err) {
     console.error("[webhook/email]", err)

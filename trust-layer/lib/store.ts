@@ -14,11 +14,15 @@ export const store = {
   async getUserByForwardingAddress(addr: string): Promise<User | null> {
     if (isSupabaseConfigured) {
       const supabase = createAdminClient()
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("users")
         .select("*")
         .eq("forwarding_address", addr)
         .single()
+      
+      if (error && error.code !== "PGRST116") {
+        console.error(`[store] Error fetching user by address ${addr}:`, error.message)
+      }
       return data
     }
     return memoryUsers.find((u) => u.forwarding_address === addr) ?? null
@@ -41,7 +45,10 @@ export const store = {
     if (isSupabaseConfigured) {
       const supabase = createAdminClient()
       const { data, error } = await supabase.from("users").insert(user).select().single()
-      if (error) throw error
+      if (error) {
+        console.error(`[store] Error creating user:`, error.message)
+        throw error
+      }
       return data
     }
     memoryUsers.push(user)
@@ -51,7 +58,10 @@ export const store = {
   async getAllUsers(): Promise<User[]> {
     if (isSupabaseConfigured) {
       const supabase = createAdminClient()
-      const { data } = await supabase.from("users").select("*")
+      const { data, error } = await supabase.from("users").select("*")
+      if (error) {
+        console.error(`[store] Error fetching all users:`, error.message)
+      }
       return data || []
     }
     return memoryUsers
@@ -76,7 +86,10 @@ export const store = {
     if (isSupabaseConfigured) {
       const supabase = createAdminClient()
       const { data, error } = await supabase.from("emails").insert(email).select().single()
-      if (error) throw error
+      if (error) {
+        console.error(`[store] Error saving email:`, error.message)
+        throw error
+      }
       return data
     }
     memoryEmails.push(email)
@@ -86,7 +99,10 @@ export const store = {
   async getEmailById(id: string): Promise<ProcessedEmail | null> {
     if (isSupabaseConfigured) {
       const supabase = createAdminClient()
-      const { data } = await supabase.from("emails").select("*").eq("id", id).single()
+      const { data, error } = await supabase.from("emails").select("*").eq("id", id).single()
+      if (error && error.code !== "PGRST116") {
+        console.error(`[store] Error fetching email by ID ${id}:`, error.message)
+      }
       return data
     }
     return memoryEmails.find((e) => e.id === id) ?? null
@@ -97,7 +113,10 @@ export const store = {
     if (isSupabaseConfigured) {
       const supabase = createAdminClient()
       const { data, error } = await supabase.from("analysis_results").insert(result).select().single()
-      if (error) throw error
+      if (error) {
+        console.error(`[store] Error saving analysis result:`, error.message)
+        throw error
+      }
       return data
     }
     memoryResults.push(result)
