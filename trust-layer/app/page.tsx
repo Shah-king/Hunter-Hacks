@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useRef } from "react"
 import Link from "next/link"
 import {
   Activity,
@@ -17,6 +17,18 @@ import {
   TriangleAlert,
 } from "lucide-react"
 import FloatingActionButton from "./components/FloatingActionButton"
+import { getStoredLanguage } from "./components/LanguageSelect"
+
+type AnalyzeResult = {
+  risk_level: "scam" | "suspicious" | "safe"
+  confidence: number
+  scam_type: string | null
+  explanation: string
+  actions: string[]
+  red_flags: string[]
+  detected_language: string
+  output_language: string
+}
 
 const TRENDING_POST = {
   user: "Maya from Queens",
@@ -101,35 +113,60 @@ function ProtectionStatus() {
   )
 }
 
-function ScamAlertCard({ message }: { message: string }) {
+const RISK_CONFIG = {
+  scam: { label: “Scam Detected”, color: “text-rose-500”, bg: “border-rose-100”, scoreBg: “from-rose-100 to-pink-50 text-rose-600” },
+  suspicious: { label: “Suspicious Message”, color: “text-amber-600”, bg: “border-amber-100”, scoreBg: “from-amber-100 to-orange-50 text-amber-700” },
+  safe: { label: “Looks Safe”, color: “text-emerald-600”, bg: “border-emerald-100”, scoreBg: “from-emerald-100 to-green-50 text-emerald-700” },
+}
+
+function ScamAlertCard({ result }: { result: AnalyzeResult }) {
+  const cfg = RISK_CONFIG[result.risk_level]
   return (
-    <section className="soft-card rounded-[28px] border-rose-100 p-5">
-      <div className="flex items-start justify-between gap-4">
+    <section className={`soft-card rounded-[28px] p-5 ${cfg.bg}`}>
+      <div className=”flex items-start justify-between gap-4”>
         <div>
-          <p className="text-xs font-black uppercase tracking-[0.16em] text-rose-500">Scam Alert</p>
-          <h2 className="mt-2 text-2xl font-black text-slate-950">High risk detected</h2>
-          <p className="mt-2 text-sm leading-6 text-slate-600">
-            This message uses urgency, legal threats, and gift card payment. Real agencies do not ask for gift cards.
+          <p className={`text-xs font-black uppercase tracking-[0.16em] ${cfg.color}`}>{cfg.label}</p>
+          <h2 className=”mt-2 text-2xl font-black text-slate-950”>
+            {result.scam_type ? result.scam_type.replace(/_/g, “ “) : cfg.label}
+          </h2>
+          {result.detected_language !== “English” && (
+            <p className=”mt-1 text-xs text-slate-400”>Detected: {result.detected_language}</p>
+          )}
+        </div>
+        <div className={`rounded-3xl bg-gradient-to-br px-4 py-3 text-center ${cfg.scoreBg}`}>
+          <p className=”text-3xl font-black”>{result.confidence}%</p>
+          <p className=”text-xs font-black”>confidence</p>
+        </div>
+      </div>
+
+      {result.explanation && (
+        <div className=”mt-5 rounded-3xl bg-slate-50 p-4”>
+          <p className=”text-xs font-black uppercase tracking-[0.14em] text-slate-400”>
+            Analysis · {result.output_language}
           </p>
+          <p className=”mt-2 text-sm leading-6 text-slate-700”>{result.explanation}</p>
         </div>
-        <div className="rounded-3xl bg-gradient-to-br from-rose-100 to-pink-50 px-4 py-3 text-center text-rose-600">
-          <p className="text-3xl font-black">92%</p>
-          <p className="text-xs font-black">confidence</p>
+      )}
+
+      {result.red_flags.length > 0 && (
+        <div className=”mt-4 flex flex-wrap gap-2”>
+          {result.red_flags.map((flag) => (
+            <span key={flag} className=”rounded-full bg-rose-50 px-3 py-1 text-xs font-bold text-rose-500”>
+              {flag}
+            </span>
+          ))}
         </div>
-      </div>
+      )}
 
-      <div className="mt-5 rounded-3xl bg-slate-50 p-4">
-        <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-400">Checked message</p>
-        <p className="mt-2 text-sm leading-6 text-slate-700">“{message || SAMPLE_MESSAGE}”</p>
-      </div>
-
-      <div className="mt-5 grid gap-3 sm:grid-cols-2">
-        {["Do not respond", "Do not click links", "Do not send money", "Ask someone you trust"].map((step) => (
-          <div key={step} className="rounded-2xl bg-white p-3 text-sm font-bold text-slate-700 shadow-sm ring-1 ring-slate-100">
-            {step}
-          </div>
-        ))}
-      </div>
+      {result.actions.length > 0 && (
+        <div className=”mt-5 grid gap-3 sm:grid-cols-2”>
+          {result.actions.map((step) => (
+            <div key={step} className=”rounded-2xl bg-white p-3 text-sm font-bold text-slate-700 shadow-sm ring-1 ring-slate-100”>
+              {step}
+            </div>
+          ))}
+        </div>
+      )}
     </section>
   )
 }
@@ -224,19 +261,42 @@ function RecentActivity() {
 export default function Home() {
   const [message, setMessage] = useState(SAMPLE_MESSAGE)
   const [analyzing, setAnalyzing] = useState(false)
-  const [showResult, setShowResult] = useState(true)
+  const [result, setResult] = useState<AnalyzeResult | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const currentMessage = useRef(message)
+  currentMessage.current = message
 
-  function analyze() {
+  // Re-analyze when user switches language in the header selector
+  useEffect(() => {
+    function onLanguageChange() {
+      if (result) void runAnalyze(currentMessage.current)
+    }
+    window.addEventListener("tl-language-change", onLanguageChange)
+    return () => window.removeEventListener("tl-language-change", onLanguageChange)
+  }, [result])
+
+  async function runAnalyze(text: string) {
     setAnalyzing(true)
-    window.setTimeout(() => {
-      setShowResult(true)
+    setError(null)
+    try {
+      const res = await fetch("/api/analyze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text, language: getStoredLanguage() }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? "Analysis failed")
+      setResult(data as AnalyzeResult)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong")
+    } finally {
       setAnalyzing(false)
-    }, 450)
+    }
   }
 
   function simulate() {
     setMessage(SAMPLE_MESSAGE)
-    analyze()
+    void runAnalyze(SAMPLE_MESSAGE)
   }
 
   return (
@@ -277,7 +337,8 @@ export default function Home() {
             value={message}
             onChange={(event) => {
               setMessage(event.target.value)
-              setShowResult(false)
+              setResult(null)
+              setError(null)
             }}
             rows={7}
             placeholder="Paste a suspicious message here..."
@@ -285,17 +346,20 @@ export default function Home() {
           />
           <button
             type="button"
-            onClick={analyze}
+            onClick={() => void runAnalyze(message)}
             disabled={analyzing || !message.trim()}
             className="mt-5 flex w-full items-center justify-center gap-2 rounded-[22px] bg-sky-500 px-5 py-4 text-sm font-black text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-sky-600 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
           >
             {analyzing ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
             {analyzing ? "Analyzing..." : "Analyze"}
           </button>
+          {error && (
+            <p className="mt-3 rounded-2xl bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-600">{error}</p>
+          )}
         </div>
 
-        {showResult ? (
-          <ScamAlertCard message={message} />
+        {result ? (
+          <ScamAlertCard result={result} />
         ) : (
           <div className="soft-card flex min-h-80 items-center justify-center rounded-[32px] p-8 text-center">
             <div>
@@ -303,7 +367,9 @@ export default function Home() {
                 <MessageCircle className="h-7 w-7" />
               </div>
               <h2 className="mt-5 text-xl font-black text-slate-950">Ready when you are</h2>
-              <p className="mt-2 text-sm leading-6 text-slate-500">Run the check to see a premium scam alert card.</p>
+              <p className="mt-2 text-sm leading-6 text-slate-500">
+                {analyzing ? "Analyzing your message..." : "Paste a message and click Analyze."}
+              </p>
             </div>
           </div>
         )}
