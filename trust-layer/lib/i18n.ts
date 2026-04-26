@@ -574,13 +574,12 @@ import { useState, useEffect } from "react"
 import { getStoredLanguage } from "@/app/components/LanguageSelect"
 
 export function useLanguage() {
-  const [lang, setLang] = useState<LangCode>(() => {
-    if (typeof window === "undefined") return "en"
-    const stored = getStoredLanguage()
-    return (stored in translations ? stored : "en") as LangCode
-  })
+  const [lang, setLang] = useState<LangCode>("en")
 
   useEffect(() => {
+    const stored = getStoredLanguage()
+    if (stored in translations) setLang(stored as LangCode)
+
     function onLangChange(e: Event) {
       const detail = (e as CustomEvent<string>).detail
       if (detail in translations) setLang(detail as LangCode)

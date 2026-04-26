@@ -26,7 +26,7 @@ Return JSON exactly:
   return JSON.parse(res.choices[0].message.content!) as LanguageDetectionResult
 }
 
-export async function scoreFraudWithAI(englishText: string): Promise<AIScoringResult> {
+export async function scoreFraudWithAI(englishText: string, languageName = "English"): Promise<AIScoringResult> {
   const res = await openai.chat.completions.create({
     model: "gpt-4o-mini",
     temperature: 0,
@@ -34,29 +34,38 @@ export async function scoreFraudWithAI(englishText: string): Promise<AIScoringRe
     messages: [
       {
         role: "system",
-        content: `You are a fraud detection system. Analyze the following email and score it for fraud/scam likelihood.
+        content: `You are TrustLayer, an AI fraud detection system.
 
-Scoring rubric (additive):
-- Urgency/pressure tactics: +20
-- Payment via unusual methods (gift cards, crypto, wire transfer): +30
-- Authority impersonation (IRS, SSA, police, immigration): +25
-- Threats (arrest, deportation, lawsuit): +20
-- Suspicious links or spoofed domains: +20
-- Too-good-to-be-true offers (lottery, easy money, remote job): +15
-- Generic/impersonal greeting (Dear Customer, Dear User): +10
+Analyze the message for scam signals and return a structured confidence breakdown.
 
-Return JSON exactly:
+OUTPUT FORMAT (strict JSON):
 {
-  "fraud_score": <0-100>,
-  "scam_type": "<phishing|impersonation|job_scam|investment|romance|government|lottery|other|none>",
-  "red_flags": ["<specific phrase or pattern found>", ...],
-  "reasoning": "<one sentence why>"
-}`,
+  "fraud_score": number (0-100, overall risk),
+  "scam_type": "phishing|impersonation|job_scam|investment|romance|government|lottery|other|none",
+  "breakdown": [
+    { "label": "Urgency", "score": number (0-100), "reason": "short explanation referencing the message" },
+    { "label": "Authority Impersonation", "score": number (0-100), "reason": "..." },
+    { "label": "Threat / Fear", "score": number (0-100), "reason": "..." },
+    { "label": "Suspicious Link or Contact", "score": number (0-100), "reason": "..." },
+    { "label": "Too Good To Be True", "score": number (0-100), "reason": "..." }
+  ],
+  "red_flags": string[] (max 5, specific phrases from the message),
+  "reasoning": "one sentence overall summary in English"
+}
+
+SCORING RULES:
+- Each category score reflects how strongly it appears (0 = absent, 70+ = clearly present, 90+ = extremely obvious)
+- Keep scores realistic — do NOT set all categories high
+- Reference specific phrases from the message in "reason" fields
+- Return ONLY valid JSON`,
       },
       { role: "user", content: englishText },
     ],
   })
-  return JSON.parse(res.choices[0].message.content!) as AIScoringResult
+  const raw = JSON.parse(res.choices[0].message.content!) as AIScoringResult
+  // Ensure breakdown always exists (safety fallback)
+  if (!raw.breakdown) raw.breakdown = []
+  return raw
 }
 
 export async function generateWarningEmail(

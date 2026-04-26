@@ -9,9 +9,11 @@ import {
   ArrowRight,
   MessageSquareWarning,
 } from "lucide-react"
+import { useLanguage } from "@/lib/i18n"
 
 export default function LandingContent() {
   const router = useRouter()
+  const { t } = useLanguage()
 
   return (
     <main className="mx-auto w-full max-w-6xl px-4 py-12 sm:px-6 lg:px-8">
@@ -21,24 +23,24 @@ export default function LandingContent() {
           <ShieldCheck className="h-12 w-12" />
         </div>
         <h1 className="max-w-4xl text-5xl font-black tracking-tight text-slate-950 sm:text-7xl">
-          Catch scams before they reach your family.
+          {t("hero_headline")}
         </h1>
         <p className="mt-8 max-w-2xl text-lg leading-8 text-slate-600 sm:text-xl font-medium">
-          TrustLayer uses advanced AI to automatically detect, translate, and explain suspicious emails and messages in your native language.
+          {t("hero_subtitle")}
         </p>
         <div className="mt-12 flex flex-col items-center justify-center gap-4 sm:flex-row sm:gap-6">
           <button
             onClick={() => router.push("/login")}
             className="group flex items-center justify-center gap-2 rounded-2xl bg-slate-950 px-8 py-4 text-base font-black text-white shadow-xl transition hover:-translate-y-1 hover:bg-slate-800 active:scale-95"
           >
-            Get started for free
+            {t("get_started")}
             <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
           </button>
           <button
             onClick={() => router.push("/social")}
             className="flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-8 py-4 text-base font-black text-slate-700 shadow-sm transition hover:-translate-y-1 hover:bg-slate-50 active:scale-95"
           >
-            Explore community patterns
+            {t("explore_community")}
           </button>
         </div>
       </section>
@@ -47,20 +49,20 @@ export default function LandingContent() {
       <section className="grid gap-8 py-16 sm:grid-cols-3">
         {[
           {
-            title: "Auto-Forwarding",
-            desc: "Forward suspicious emails to your unique TrustLayer address. No passwords or inbox access needed.",
+            title: t("feature_forwarding_title"),
+            desc: t("feature_forwarding_desc"),
             icon: Zap,
             color: "text-amber-600 bg-amber-50",
           },
           {
-            title: "AI Analysis",
-            desc: "Our AI breaks down red flags, identifies the scam type, and suggests immediate safety steps.",
+            title: t("feature_ai_title"),
+            desc: t("feature_ai_desc"),
             icon: MessageSquareWarning,
             color: "text-rose-600 bg-rose-50",
           },
           {
-            title: "Native Language",
-            desc: "Get explanations and alerts in your native language, making protection accessible for everyone.",
+            title: t("feature_native_title"),
+            desc: t("feature_native_desc"),
             icon: Globe,
             color: "text-emerald-600 bg-emerald-50",
           },
@@ -82,20 +84,20 @@ export default function LandingContent() {
         <div className="relative z-10 max-w-2xl">
           <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-1.5 text-xs font-black uppercase tracking-widest text-sky-400 ring-1 ring-white/20">
             <Users className="h-3.5 w-3.5" />
-            Community Driven
+            {t("community_powered")}
           </div>
           <h2 className="mt-8 text-4xl font-black tracking-tight sm:text-5xl">
-            Protecting the people you love.
+            {t("community_headline")}
           </h2>
           <p className="mt-6 text-lg leading-8 text-slate-300 font-medium">
-            Join thousands of users sharing scam patterns to keep their communities safe. Whether it&apos;s an IRS impersonation or a fake job offer, we&apos;ve got your back.
+            {t("community_desc")}
           </p>
           <div className="mt-10">
-            <button 
+            <button
               onClick={() => router.push("/login")}
               className="rounded-2xl bg-white px-8 py-4 text-base font-black text-slate-950 transition hover:bg-slate-100 active:scale-95"
             >
-              Protect your inbox
+              {t("explore_trustwall")}
             </button>
           </div>
         </div>
