@@ -17,6 +17,7 @@ import {
   Copy,
 } from "lucide-react"
 import type { EmailWithAnalysis, User, AnalysisResult, RiskLevel } from "@/lib/types"
+import { getStoredLanguage } from "@/app/components/LanguageSelect"
 
 const SAMPLE_MESSAGE =
   "Final notice: your tax case will be sent to federal court unless you pay today with gift cards."
@@ -311,20 +312,23 @@ export default function DashboardContent() {
     }
   }, [fetchEmails])
 
-  async function analyze() {
-    if (!message.trim()) return
+  const analyze = useCallback(async (text?: string) => {
+    const messageToAnalyze = text ?? message
+    if (!messageToAnalyze.trim()) return
     setAnalyzing(true)
     setAnalysisResult(null)
     try {
       const res = await fetch("/api/simulate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ customMessage: message }),
+        body: JSON.stringify({
+          customMessage: messageToAnalyze,
+          language: getStoredLanguage(),
+        }),
       })
       const data = await res.json()
       if (res.ok) {
         setAnalysisResult(data.analysis)
-        // Refresh emails to see the check in history
         fetchEmails()
       }
     } catch {
@@ -332,7 +336,18 @@ export default function DashboardContent() {
     } finally {
       setAnalyzing(false)
     }
-  }
+  }, [message, fetchEmails])
+
+  // Re-analyze when the user switches language in the header (only if there's a current result)
+  useEffect(() => {
+    function onLanguageChange() {
+      if (analysisResult && message.trim()) {
+        void analyze(message)
+      }
+    }
+    window.addEventListener("tl-language-change", onLanguageChange)
+    return () => window.removeEventListener("tl-language-change", onLanguageChange)
+  }, [analysisResult, message, analyze])
 
   const filtered = filter === "all" ? emails : emails.filter((e) => e.analysis?.risk_level === filter)
 
@@ -390,7 +405,7 @@ export default function DashboardContent() {
           />
           <button
             type="button"
-            onClick={analyze}
+            onClick={() => void analyze()}
             disabled={analyzing || !message.trim()}
             className="mt-6 flex w-full items-center justify-center gap-3 rounded-[22px] bg-sky-500 px-6 py-4 text-sm font-black text-white shadow-xl shadow-sky-100 transition hover:-translate-y-0.5 hover:bg-sky-600 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
           >

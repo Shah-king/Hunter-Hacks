@@ -21,8 +21,9 @@ export async function runPipeline(params: {
   sender: string
   subject: string
   body: string
+  outputLanguage?: string  // overrides auto-detected language for the explanation
 }): Promise<{ email: ProcessedEmail; analysis: AnalysisResult }> {
-  const { user, sender, subject, body: rawBody } = params
+  const { user, sender, subject, body: rawBody, outputLanguage } = params
 
   // SECURITY: Redact PII (SSNs, Credit Cards) before sending to OpenAI or saving to DB
   const body = redactPII(rawBody)
@@ -64,7 +65,7 @@ export async function runPipeline(params: {
       aiResult.red_flags,
       finalScore,
       aiResult.reasoning,
-      lang.language_name,
+      outputLanguage ?? lang.language_name,
     )
     explanation = warning
 
