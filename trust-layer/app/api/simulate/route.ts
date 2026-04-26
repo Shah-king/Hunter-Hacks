@@ -7,6 +7,8 @@ const LANGUAGE_NAMES: Record<string, string> = {
   en: "English",
   es: "Spanish",
   zh: "Chinese",
+  fr: "French",
+  ko: "Korean",
   bn: "Bengali",
   ht: "Haitian Creole",
 }

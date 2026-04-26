@@ -5,6 +5,7 @@ import Link from "next/link"
 import Image from "next/image"
 import { Flame, ShieldCheck, Sparkles } from "lucide-react"
 import FloatingActionButton from "../components/FloatingActionButton"
+import { useT } from "@/app/components/useT"
 
 type SocialPostData = {
   id: string
@@ -64,7 +65,7 @@ const POSTS: SocialPostData[] = [
     color: "from-[#38bdf8] via-[#8b5cf6] to-[#ec4899]",
     story: "Got this message during standup 😭",
     message: "Your account will be locked unless you verify immediately.",
-    reaction: "I haven’t even finished my Jira ticket 💀",
+    reaction: "I haven't even finished my Jira ticket 💀",
     emotionalContext: "Easy to click when you are rushing between meetings.",
     explanation: "🚨 This is a scam because it threatens account loss and pushes instant verification",
     seenCount: "1,482 people saw this this week",
@@ -167,6 +168,7 @@ const COMMUNITY_COMMENTS = [
 function SocialPost({ post }: { post: SocialPostData }) {
   const [reaction, setReaction] = useState<"got" | "confirmed" | "love" | null>(null)
   const [counts, setCounts] = useState(post.reactions)
+  const { t } = useT()
 
   function react(type: keyof typeof counts) {
     if (reaction) return
@@ -198,14 +200,14 @@ function SocialPost({ post }: { post: SocialPostData }) {
           <div className="flex shrink-0 flex-col items-end gap-1.5">
             {post.trending ? (
               <span className="rounded-full bg-gradient-to-r from-pink-100 via-purple-100 to-sky-100 px-2.5 py-1 text-[11px] font-bold text-[#ec4899]">
-                🔥 Trending
+                🔥 {t("trending")}
               </span>
             ) : null}
             <span className="rounded-full bg-gradient-to-r from-pink-50 to-sky-50 px-2.5 py-1 text-[11px] font-bold text-zinc-600">
               {post.tag}
             </span>
             <span className="rounded-full bg-[#fee2e2] px-2.5 py-1 text-[11px] font-bold text-[#ec4899]">
-              Risk: {post.risk}
+              {t("risk_label")} {post.risk}
             </span>
           </div>
         </div>
@@ -213,8 +215,8 @@ function SocialPost({ post }: { post: SocialPostData }) {
         <p className="mt-5 text-[15px] font-semibold leading-[1.4] text-zinc-800">{post.story}</p>
 
         <div className="mt-3 max-w-[520px] rounded-xl bg-zinc-100 p-[10px]">
-          <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-zinc-400">Scam message</p>
-          <p className="mt-1.5 text-[14px] leading-[1.4] text-zinc-800">“{post.message}”</p>
+          <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-zinc-400">{t("scam_message_label")}</p>
+          <p className="mt-1.5 text-[14px] leading-[1.4] text-zinc-800">&quot;{post.message}&quot;</p>
         </div>
 
         <p className="mt-3 max-w-[520px] rounded-xl bg-[#fee2e2] p-[10px] text-[14px] font-semibold leading-[1.4] text-rose-700">
@@ -222,7 +224,7 @@ function SocialPost({ post }: { post: SocialPostData }) {
         </p>
 
         <div className="mt-3 max-w-[520px] rounded-2xl p-3 text-[14px] leading-[1.4]">
-          <p className="mb-2 text-[12px] font-medium leading-[1.4] text-zinc-400">💬 What people are saying</p>
+          <p className="mb-2 text-[12px] font-medium leading-[1.4] text-zinc-400">{t("what_people_saying")}</p>
           {COMMUNITY_COMMENTS.slice(0, post.memeImage ? 5 : 3).map((comment) => (
             <p
               key={comment.text}
@@ -235,7 +237,7 @@ function SocialPost({ post }: { post: SocialPostData }) {
 
         {post.memeImage ? (
           <div className="mt-3 max-w-[520px] rounded-2xl bg-white p-3 shadow-[0_6px_20px_rgba(0,0,0,0.06)]">
-            <p className="mb-2 px-1 text-[12px] font-medium leading-[1.4] text-zinc-500">💬 Common reaction in community</p>
+            <p className="mb-2 px-1 text-[12px] font-medium leading-[1.4] text-zinc-500">{t("what_people_saying")}</p>
             <Image
               src={post.memeImage.src}
               alt={post.memeImage.alt}
@@ -244,7 +246,7 @@ function SocialPost({ post }: { post: SocialPostData }) {
               className="max-h-[180px] w-full rounded-xl object-cover"
             />
             <p className="mt-2 px-1 text-[12px] font-medium leading-[1.4] text-zinc-500">
-              This scam format has been reported multiple times
+              {t("scam_reported_multiple")}
             </p>
           </div>
         ) : null}
@@ -259,7 +261,7 @@ function SocialPost({ post }: { post: SocialPostData }) {
             reaction === "love" ? "bg-pink-100 text-[#ec4899]" : "bg-zinc-100 text-zinc-500 hover:bg-pink-50 hover:text-[#ec4899]"
           }`}
         >
-          ❤️ Helpful {counts.love}
+          ❤️ {t("reaction_helpful")} {counts.love}
         </button>
         <button
           type="button"
@@ -269,7 +271,7 @@ function SocialPost({ post }: { post: SocialPostData }) {
             reaction === "got" ? "bg-sky-100 text-[#38bdf8]" : "bg-zinc-100 text-zinc-500 hover:bg-sky-50 hover:text-[#38bdf8]"
           }`}
         >
-          🙋 I got this too {counts.got}
+          🙋 {t("reaction_got_this")} {counts.got}
         </button>
         <button
           type="button"
@@ -279,7 +281,7 @@ function SocialPost({ post }: { post: SocialPostData }) {
             reaction === "confirmed" ? "bg-rose-100 text-[#ec4899]" : "bg-zinc-100 text-zinc-500 hover:bg-rose-50 hover:text-[#ec4899]"
           }`}
         >
-          ⚠️ Scam confirmed {counts.confirmed}
+          ⚠️ {t("reaction_confirmed")} {counts.confirmed}
         </button>
       </div>
     </article>
@@ -288,6 +290,7 @@ function SocialPost({ post }: { post: SocialPostData }) {
 
 export default function SocialPage() {
   const featuredPost = POSTS[0]
+  const { t } = useT()
 
   return (
     <main className="min-h-screen bg-white px-4 py-8 sm:px-6 lg:px-8">
@@ -296,17 +299,17 @@ export default function SocialPage() {
           <div>
             <div className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 text-xs font-bold text-[#ec4899] shadow-sm">
               <Sparkles className="h-3.5 w-3.5" />
-              TrustWall social feed
+              {t("trustwall_feed")}
             </div>
             <h1 className="mt-5 max-w-2xl text-[40px] font-bold leading-[1.05] tracking-tight text-zinc-950 sm:text-[48px]">
-              Catch scams before they catch your family.
+              {t("social_headline")}
             </h1>
             <p className="mt-4 text-lg font-medium leading-[1.4] text-zinc-600">
-              Simple. Clear. Community-powered.
+              {t("social_subtitle")}
             </p>
             <Link href="/#analyze" className="mt-6 inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-[#ec4899] via-[#8b5cf6] to-[#38bdf8] px-5 py-3 text-sm font-bold text-white shadow-[0_6px_20px_rgba(0,0,0,0.06)] transition hover:-translate-y-0.5">
               <ShieldCheck className="h-4 w-4" />
-              Try a message
+              {t("try_message")}
             </Link>
           </div>
 
@@ -322,14 +325,14 @@ export default function SocialPage() {
             </div>
             <p className="mt-4 text-[14px] font-semibold leading-[1.4] text-zinc-800">{featuredPost.story}</p>
             <div className="mt-3 rounded-xl bg-zinc-100 p-[10px]">
-              <p className="text-[14px] leading-[1.4] text-zinc-700">“{featuredPost.message}”</p>
+              <p className="text-[14px] leading-[1.4] text-zinc-700">&quot;{featuredPost.message}&quot;</p>
             </div>
             <div className="mt-3 flex gap-2 text-[12px] font-bold text-zinc-500">
               <span className="rounded-full bg-pink-50 px-3 py-1.5">❤️ {featuredPost.reactions.love}</span>
               <span className="rounded-full bg-rose-50 px-3 py-1.5">⚠️ {featuredPost.reactions.confirmed}</span>
             </div>
             <div className="mt-4">
-              <p className="mb-2 text-[12px] font-medium leading-[1.4] text-zinc-400">💬 What people are saying</p>
+              <p className="mb-2 text-[12px] font-medium leading-[1.4] text-zinc-400">{t("what_people_saying")}</p>
               {COMMUNITY_COMMENTS.slice(0, 3).map((comment) => (
                 <p
                   key={comment.text}
@@ -353,13 +356,13 @@ export default function SocialPage() {
         <aside className="h-fit rounded-[20px] bg-white p-4 shadow-[0_6px_20px_rgba(0,0,0,0.06)]">
           <div className="flex items-center gap-2">
             <Flame className="h-5 w-5 text-[#ec4899]" />
-            <p className="font-bold text-zinc-950">Community pulse</p>
+            <p className="font-bold text-zinc-950">{t("community_pulse")}</p>
           </div>
           <div className="mt-4 space-y-2.5">
             {[
-              ["183", "people warned today"],
-              ["41", "confirmed scams"],
-              ["5", "languages supported"],
+              ["183", t("people_warned_today")],
+              ["41", t("confirmed_scams_label")],
+              ["7", t("languages_supported")],
             ].map(([value, label]) => (
               <div key={label} className="rounded-2xl bg-zinc-50 px-4 py-3">
                 <p className="text-xl font-black text-zinc-950">{value}</p>
@@ -368,7 +371,7 @@ export default function SocialPage() {
             ))}
           </div>
           <p className="mt-4 rounded-2xl bg-gradient-to-br from-pink-50 to-sky-50 p-4 text-sm leading-[1.4] text-zinc-600">
-            When one person shares a scam, everyone else gets a little safer.
+            {t("community_quote")}
           </p>
         </aside>
       </section>

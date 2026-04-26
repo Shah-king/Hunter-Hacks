@@ -7,6 +7,8 @@ const LANGUAGES = [
   { value: "en", short: "EN", label: "🇺🇸 English" },
   { value: "zh", short: "中文", label: "🇨🇳 中文" },
   { value: "es", short: "ES", label: "🇪🇸 Español" },
+  { value: "fr", short: "FR", label: "🇫🇷 Français" },
+  { value: "ko", short: "한국어", label: "🇰🇷 한국어" },
   { value: "bn", short: "বাংলা", label: "🇧🇩 বাংলা" },
   { value: "ht", short: "Kreyòl", label: "🇭🇹 Kreyòl" },
 ]
@@ -15,6 +17,8 @@ export const LANGUAGE_NAMES: Record<string, string> = {
   en: "English",
   es: "Spanish",
   zh: "Chinese",
+  fr: "French",
+  ko: "Korean",
   bn: "Bengali",
   ht: "Haitian Creole",
 }
