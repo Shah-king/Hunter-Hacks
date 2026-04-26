@@ -23,6 +23,7 @@ export async function POST(req: NextRequest) {
     const formData = await req.formData()
 
     const toHeader = (formData.get("to") as string) ?? ""
+    const envelopeRaw = (formData.get("envelope") as string) ?? ""
     const from = (formData.get("from") as string) ?? "unknown@example.com"
     const subject = (formData.get("subject") as string) ?? "(no subject)"
     const body = (formData.get("text") as string) ?? (formData.get("html") as string) ?? ""
@@ -35,10 +36,25 @@ export async function POST(req: NextRequest) {
     }
 
     // Identify user by forwarding address
-    const emailMatch = toHeader.match(/<([^>]+)>|([^\s,<>]+@[^\s,<>]+)/)
-    const forwardingAddress = (emailMatch ? (emailMatch[1] || emailMatch[2]) : toHeader).trim().toLowerCase()
+    // Priority 1: Envelope recipient (100% accurate)
+    // Priority 2: Parsed 'to' header
+    let forwardingAddress = ""
+    try {
+      if (envelopeRaw) {
+        const envelope = JSON.parse(envelopeRaw)
+        forwardingAddress = envelope.to?.[0] || ""
+      }
+    } catch (e) {
+      console.error("[webhook/email] Error parsing envelope:", e)
+    }
+
+    if (!forwardingAddress) {
+      const emailMatch = toHeader.match(/<([^>]+)>|([^\s,<>]+@[^\s,<>]+)/)
+      forwardingAddress = (emailMatch ? (emailMatch[1] || emailMatch[2]) : toHeader).trim().toLowerCase()
+    }
     
-    console.log(`[webhook/email] Extracted forwarding address: ${forwardingAddress}`)
+    forwardingAddress = forwardingAddress.toLowerCase().trim()
+    console.log(`[webhook/email] Final target address: ${forwardingAddress}`)
 
     const user = await store.getUserByForwardingAddress(forwardingAddress)
 
