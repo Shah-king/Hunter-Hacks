@@ -3,6 +3,16 @@ import { store } from "@/lib/store"
 import { runPipeline } from "@/lib/pipeline"
 import { createClient } from "@/lib/supabase/server"
 
+const LANGUAGE_NAMES: Record<string, string> = {
+  en: "English",
+  es: "Spanish",
+  zh: "Chinese",
+  fr: "French",
+  ko: "Korean",
+  bn: "Bengali",
+  ht: "Haitian Creole",
+}
+
 const SAMPLE_EMAILS = {
   irs: {
     sender: "irs-alerts@irs-gov-notice.net",
@@ -51,17 +61,28 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Rate limit exceeded. Please wait a minute." }, { status: 429 })
     }
 
-    const supabase = await createClient()
-    const { data: { user: authUser } } = await supabase.auth.getUser()
+    // Auth lookup is optional — fall back to demo user if Supabase isn't configured
+    let authUser: { id: string; email?: string } | null = null
+    try {
+      const supabase = await createClient()
+      const { data } = await supabase.auth.getUser()
+      authUser = data.user
+    } catch {
+      // Supabase env vars not set — proceed with demo user
+    }
 
     const body = await req.json()
 
-    let user = store.getAllUsers()[0]
+    let user = (await store.getAllUsers())[0]
     if (authUser) {
-      user = store.getOrRegisterUser(authUser.id, authUser.email ?? "")
+      user = await store.getOrRegisterUser(authUser.id, authUser.email ?? "")
     }
 
     if (!user) return NextResponse.json({ error: "No users registered" }, { status: 404 })
+
+    // Map ISO language code to full language name (e.g. "es" -> "Spanish")
+    const langCode: string = body.language ?? "en"
+    const outputLanguage = LANGUAGE_NAMES[langCode] ?? "English"
 
     // SECURITY: Support custom message analysis from the Quick Check UI
     if (body.customMessage) {
@@ -70,6 +91,7 @@ export async function POST(req: NextRequest) {
         sender: "direct-check@trustlayer.store",
         subject: "Direct Message Analysis",
         body: body.customMessage,
+        outputLanguage,
       })
       return NextResponse.json({ email, analysis, scenario: "custom" })
     }
@@ -82,6 +104,7 @@ export async function POST(req: NextRequest) {
       sender: sample.sender,
       subject: sample.subject,
       body: sample.body,
+      outputLanguage,
     })
 
     return NextResponse.json({ email, analysis, scenario })

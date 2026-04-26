@@ -22,28 +22,36 @@ export async function POST(req: NextRequest) {
 
     const formData = await req.formData()
 
-    const to = (formData.get("to") as string) ?? ""
+    const toHeader = (formData.get("to") as string) ?? ""
     const from = (formData.get("from") as string) ?? "unknown@example.com"
     const subject = (formData.get("subject") as string) ?? "(no subject)"
     const body = (formData.get("text") as string) ?? (formData.get("html") as string) ?? ""
 
+    console.log(`[webhook/email] Received email: to=${toHeader}, from=${from}, subject=${subject}`)
+
     if (!body.trim()) {
+      console.error("[webhook/email] Rejected: Empty body")
       return NextResponse.json({ error: "Empty email body" }, { status: 400 })
     }
 
     // Identify user by forwarding address
-    // e.g. "tl_abc123@parse.trustlayer.store"
-    const forwardingAddress = to.split(",")[0].trim()
-    const user = store.getUserByForwardingAddress(forwardingAddress)
+    const emailMatch = toHeader.match(/<([^>]+)>|([^\s,<>]+@[^\s,<>]+)/)
+    const forwardingAddress = (emailMatch ? (emailMatch[1] || emailMatch[2]) : toHeader).trim().toLowerCase()
+    
+    console.log(`[webhook/email] Extracted forwarding address: ${forwardingAddress}`)
+
+    const user = await store.getUserByForwardingAddress(forwardingAddress)
 
     if (!user) {
-      // SECURITY: If the destination address doesn't match a known user UUID, drop it.
-      // This prevents attackers from spamming our endpoint with random emails.
-      console.warn(`[webhook/email] Dropping email to unknown address: ${forwardingAddress}`)
+      console.error(`[webhook/email] Rejected: No user found for ${forwardingAddress}`)
+      // SECURITY: If the destination address doesn't match a known user, drop it.
       return NextResponse.json({ error: "Unknown destination address" }, { status: 404 })
     }
 
+    console.log(`[webhook/email] Routing email to user: ${user.id} (${user.email})`)
+
     const { email, analysis } = await runPipeline({ user, sender: from, subject, body })
+    console.log(`[webhook/email] Success: Processed email ${email.id}, Risk: ${analysis.risk_level}`)
     return NextResponse.json({ email, analysis })
   } catch (err) {
     console.error("[webhook/email]", err)

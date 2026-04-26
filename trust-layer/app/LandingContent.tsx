@@ -15,6 +15,14 @@ export default function LandingContent() {
   const router = useRouter()
   const { t } = useLanguage()
 
+  const communityComments = [
+    { text: "我妈差点信了这个 😭", className: "ml-auto" },
+    { text: "Why is the IRS asking for gift cards 💀", className: "ml-0" },
+    { text: "Esto parece súper falso 😂", className: "ml-8" },
+    { text: "এটা তো পুরো স্ক্যাম 😭", className: "ml-auto mr-5" },
+    { text: "Sa a pa fè sans ditou 💀", className: "ml-3" },
+  ]
+
   return (
     <main className="mx-auto w-full max-w-6xl px-4 py-12 sm:px-6 lg:px-8">
       {/* Hero Section */}
@@ -80,31 +88,42 @@ export default function LandingContent() {
       </section>
 
       {/* Community Proof */}
-      <section className="mt-16 rounded-[40px] bg-slate-950 p-8 sm:p-16 text-white overflow-hidden relative">
-        <div className="relative z-10 max-w-2xl">
-          <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-1.5 text-xs font-black uppercase tracking-widest text-sky-400 ring-1 ring-white/20">
-            <Users className="h-3.5 w-3.5" />
-            {t("community_powered")}
-          </div>
-          <h2 className="mt-8 text-4xl font-black tracking-tight sm:text-5xl">
-            {t("community_headline")}
-          </h2>
-          <p className="mt-6 text-lg leading-8 text-slate-300 font-medium">
-            {t("community_desc")}
-          </p>
-          <div className="mt-10">
+      <section className="mt-8 rounded-[28px] border border-pink-200/60 bg-[linear-gradient(135deg,#fff7ed,#fdf2f8,#eff6ff)] p-8 shadow-[0_8px_24px_rgba(15,23,42,0.06)] sm:p-10">
+        <div className="grid gap-8 lg:grid-cols-[1fr_340px] lg:items-center">
+          <div>
+            <div className="inline-flex items-center gap-2 rounded-full bg-white/80 px-4 py-1.5 text-xs font-black uppercase tracking-widest text-pink-500 shadow-sm">
+              <Users className="h-3.5 w-3.5" />
+              💬 {t("community_powered")}
+            </div>
+            <h2 className="mt-6 text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">
+              {t("community_headline")}
+            </h2>
+            <p className="mt-4 max-w-2xl text-base font-medium leading-7 text-slate-600">
+              {t("community_desc")}
+            </p>
             <button
-              onClick={() => router.push("/login")}
-              className="rounded-2xl bg-white px-8 py-4 text-base font-black text-slate-950 transition hover:bg-slate-100 active:scale-95"
+              onClick={() => router.push("/social")}
+              className="mt-7 inline-flex items-center gap-2 rounded-2xl bg-slate-950 px-6 py-3 text-sm font-black text-white shadow-[0_8px_20px_rgba(15,23,42,0.10)] transition hover:-translate-y-0.5 hover:bg-slate-800 active:scale-95"
             >
               {t("explore_trustwall")}
+              <ArrowRight className="h-4 w-4" />
             </button>
           </div>
+
+          <div>
+            <p className="mb-3 text-xs font-semibold text-slate-400">{t("what_people_saying")}</p>
+            <div className="space-y-2">
+              {communityComments.map((comment) => (
+                <div
+                  key={comment.text}
+                  className={`max-w-[240px] rounded-[18px] bg-white px-3.5 py-2.5 text-sm font-semibold leading-[1.4] text-slate-700 shadow-[0_4px_10px_rgba(0,0,0,0.04)] ${comment.className}`}
+                >
+                  {comment.text}
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
-        
-        {/* Abstract background shapes */}
-        <div className="absolute top-0 right-0 -translate-y-1/4 translate-x-1/4 w-96 h-96 bg-sky-500/20 rounded-full blur-[100px]" />
-        <div className="absolute bottom-0 right-0 translate-y-1/4 translate-x-1/4 w-64 h-64 bg-pink-500/10 rounded-full blur-[80px]" />
       </section>
     </main>
   )

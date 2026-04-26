@@ -21,8 +21,9 @@ export async function runPipeline(params: {
   sender: string
   subject: string
   body: string
+  outputLanguage?: string  // overrides auto-detected language for the explanation
 }): Promise<{ email: ProcessedEmail; analysis: AnalysisResult }> {
-  const { user, sender, subject, body: rawBody } = params
+  const { user, sender, subject, body: rawBody, outputLanguage } = params
 
   // SECURITY: Redact PII (SSNs, Credit Cards) before sending to OpenAI or saving to DB
   const body = redactPII(rawBody)
@@ -42,7 +43,7 @@ export async function runPipeline(params: {
     english_text: lang.english_text,
     received_at: new Date().toISOString(),
   }
-  store.saveEmail(email)
+  await store.saveEmail(email)
 
   // Stage 1: Rule-based scoring on english_text
   const { score: ruleScore, hits: ruleHits } = calculateRuleScore(lang.english_text)
@@ -52,6 +53,7 @@ export async function runPipeline(params: {
 
   // Stage 3: Aggregate scores
   const { finalScore, riskLevel } = aggregateScores(ruleScore, aiResult.fraud_score)
+  console.log(`[pipeline] Aggregated Score: ${finalScore}, Risk Level: ${riskLevel}`)
 
   // Stage 4: Generate and send warning (only if scam or suspicious)
   let alertSent = false
@@ -59,16 +61,18 @@ export async function runPipeline(params: {
   let actions: string[] = []
 
   if (riskLevel !== "safe") {
+    console.log(`[pipeline] Non-safe risk detected. Generating warning email in ${outputLanguage ?? lang.language_name}...`)
     const warning = await generateWarningEmail(
       body,
       aiResult.red_flags,
       finalScore,
       aiResult.reasoning,
-      lang.language_name,
+      outputLanguage ?? lang.language_name,
     )
     explanation = warning
 
     if (riskLevel === "scam") {
+      console.log(`[pipeline] SCAM level reached. Triggering Resend alert to ${user.email}...`)
       actions = [
         "Do not reply to this email or click any links",
         "Block the sender immediately",
@@ -82,7 +86,9 @@ export async function runPipeline(params: {
         senderEmail: sender,
         fraudScore: finalScore,
       })
+      console.log(`[pipeline] Resend alertSent status: ${alertSent}`)
     } else {
+      console.log(`[pipeline] SUSPICIOUS level. Skipping Resend alert (only sent for SCAM).`)
       actions = ["Be cautious before responding", "Verify the sender's identity through official channels"]
     }
   }
@@ -102,7 +108,7 @@ export async function runPipeline(params: {
     alert_sent: alertSent,
     analyzed_at: new Date().toISOString(),
   }
-  store.saveResult(analysis)
+  await store.saveResult(analysis)
 
   return { email, analysis }
 }
