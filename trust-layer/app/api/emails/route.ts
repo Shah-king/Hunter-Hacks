@@ -11,6 +11,9 @@ export async function GET() {
   let user = null
   if (authUser) {
     user = store.getOrRegisterUser(authUser.id, authUser.email ?? "")
+  } else {
+    // Demo mode (no Supabase configured) — fall back to the demo user
+    user = store.getAllUsers()[0] ?? null
   }
 
   const emails = store.getAllEmailsWithAnalysis()

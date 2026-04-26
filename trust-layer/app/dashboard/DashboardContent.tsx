@@ -18,16 +18,18 @@ import {
 } from "lucide-react"
 import type { EmailWithAnalysis, User, AnalysisResult, RiskLevel } from "@/lib/types"
 import { getStoredLanguage } from "@/app/components/LanguageSelect"
+import { useT } from "@/app/components/useT"
 
 const SAMPLE_MESSAGE =
   "Final notice: your tax case will be sent to federal court unless you pay today with gift cards."
 
 function ProtectionStatus({ user }: { user: User }) {
   const [copied, setCopied] = useState(false)
+  const { t } = useT()
   const rows = [
-    ["Email connected", "Ready", CheckCircle2, "text-emerald-600 bg-emerald-50"],
-    ["Monitoring active", "Live", ShieldCheck, "text-sky-600 bg-sky-50"],
-    ["Protection on", "Active", AlertTriangle, "text-amber-700 bg-amber-50"],
+    [t("email_connected"), t("ready"), CheckCircle2, "text-emerald-600 bg-emerald-50"],
+    [t("monitoring_active"), t("live"), ShieldCheck, "text-sky-600 bg-sky-50"],
+    [t("protection_on"), t("active"), AlertTriangle, "text-amber-700 bg-amber-50"],
   ] as const
 
   async function copyForwardingAddress() {
@@ -40,8 +42,8 @@ function ProtectionStatus({ user }: { user: User }) {
     <section className="soft-card rounded-[28px] p-5">
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h2 className="text-lg font-black text-slate-950">Protection Status</h2>
-          <p className="mt-1 text-sm text-slate-500 font-medium">Forwarding is active and monitoring incoming scam reports.</p>
+          <h2 className="text-lg font-black text-slate-950">{t("protection_status")}</h2>
+          <p className="mt-1 text-sm text-slate-500 font-medium">{t("protection_active_desc")}</p>
         </div>
         <div className="rounded-2xl bg-sky-50 p-3 text-sky-500 shadow-inner">
           <ShieldCheck className="h-5 w-5" />
@@ -61,7 +63,7 @@ function ProtectionStatus({ user }: { user: User }) {
         ))}
       </div>
       <div className="mt-5 rounded-3xl border border-sky-100 bg-gradient-to-br from-sky-50 to-white p-4 shadow-inner">
-        <p className="text-[10px] font-black uppercase tracking-[0.14em] text-sky-500">Your forwarding address</p>
+        <p className="text-[10px] font-black uppercase tracking-[0.14em] text-sky-500">{t("your_forwarding")}</p>
         <div className="mt-3 flex flex-col gap-3 rounded-2xl bg-white p-3 shadow-sm border border-sky-100 sm:flex-row sm:items-center sm:justify-between">
           <code className="break-all text-xs font-black text-slate-800">{user.forwarding_address}</code>
           <button
@@ -71,7 +73,7 @@ function ProtectionStatus({ user }: { user: User }) {
             aria-label="Copy forwarding address"
           >
             {copied ? <CheckCircle2 className="h-3 w-4" /> : <Copy className="h-3 w-4" />}
-            {copied ? "Copied" : "Copy"}
+            {copied ? t("copied") : t("copy")}
           </button>
         </div>
       </div>
@@ -80,6 +82,7 @@ function ProtectionStatus({ user }: { user: User }) {
 }
 
 function ScamAlertCard({ message, analysis }: { message: string; analysis: AnalysisResult }) {
+  const { t } = useT()
   const isScam = analysis.risk_level === "scam"
   const tone = isScam
     ? "text-rose-600"
@@ -92,6 +95,7 @@ function ScamAlertCard({ message, analysis }: { message: string; analysis: Analy
     ? "from-amber-100 to-yellow-50"
     : "from-emerald-100 to-teal-50"
   const border = isScam ? "border-rose-100 shadow-rose-100/20" : analysis.risk_level === "suspicious" ? "border-amber-100 shadow-amber-100/20" : "border-emerald-100 shadow-emerald-100/20"
+  const riskLabel = isScam ? t("risk_scam_label") : analysis.risk_level === "suspicious" ? t("risk_watch_label") : t("risk_safe_label")
 
   return (
     <section className={`soft-card rounded-[28px] p-6 shadow-xl border ${border} bg-white`}>
@@ -99,19 +103,19 @@ function ScamAlertCard({ message, analysis }: { message: string; analysis: Analy
         <div>
           <p className={`text-[10px] font-black uppercase tracking-[0.16em] ${tone}`}>{analysis.scam_type}</p>
           <h2 className="mt-2 text-2xl font-black text-slate-950">
-            {analysis.risk_level.charAt(0).toUpperCase() + analysis.risk_level.slice(1)} risk detected
+            {riskLabel} {t("risk_detected")}
           </h2>
           <p className="mt-3 text-sm leading-7 text-slate-600 font-medium">{analysis.explanation}</p>
         </div>
         <div className={`rounded-3xl bg-gradient-to-br px-4 py-3 text-center border ${border} ${tone} ${bg} shadow-inner`}>
           <p className="text-3xl font-black">{analysis.final_score}%</p>
-          <p className="text-[10px] font-black uppercase tracking-wider">risk score</p>
+          <p className="text-[10px] font-black uppercase tracking-wider">{t("risk_score")}</p>
         </div>
       </div>
 
       <div className="mt-6 rounded-3xl bg-slate-50 p-4 border border-slate-100">
-        <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">Checked message</p>
-        <p className="mt-2 text-sm leading-7 text-slate-700 font-medium italic">“{message || SAMPLE_MESSAGE}”</p>
+        <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">{t("checked_message")}</p>
+        <p className="mt-2 text-sm leading-7 text-slate-700 font-medium italic">"{message || SAMPLE_MESSAGE}"</p>
       </div>
 
       <div className="mt-6 grid gap-3 sm:grid-cols-2">
@@ -129,16 +133,14 @@ function ScamAlertCard({ message, analysis }: { message: string; analysis: Analy
   )
 }
 
-const RISK_STYLES: Record<RiskLevel, { 
-  label: string; 
-  pill: string; 
-  dot: string; 
+const RISK_STYLES: Record<RiskLevel, {
+  pill: string;
+  dot: string;
   bg: string;
   border: string;
   text: string;
 }> = {
   scam: {
-    label: "Scam",
     pill: "bg-rose-50 text-rose-600 border-rose-100",
     dot: "bg-rose-400",
     bg: "from-rose-50 to-white",
@@ -146,7 +148,6 @@ const RISK_STYLES: Record<RiskLevel, {
     text: "text-rose-600",
   },
   suspicious: {
-    label: "Watch",
     pill: "bg-amber-50 text-amber-700 border-amber-100",
     dot: "bg-amber-400",
     bg: "from-amber-50 to-white",
@@ -154,7 +155,6 @@ const RISK_STYLES: Record<RiskLevel, {
     text: "text-amber-700",
   },
   safe: {
-    label: "Safe",
     pill: "bg-emerald-50 text-emerald-700 border-emerald-100",
     dot: "bg-emerald-400",
     bg: "from-emerald-50 to-white",
@@ -165,8 +165,16 @@ const RISK_STYLES: Record<RiskLevel, {
 
 function EmailCard({ item }: { item: EmailWithAnalysis }) {
   const [expanded, setExpanded] = useState(false)
+  const { t } = useT()
   const analysis = item.analysis
   const risk = analysis ? RISK_STYLES[analysis.risk_level] : null
+  const riskLabel = analysis
+    ? analysis.risk_level === "scam"
+      ? t("risk_scam_label")
+      : analysis.risk_level === "suspicious"
+      ? t("risk_watch_label")
+      : t("risk_safe_label")
+    : null
 
   return (
     <article className={`overflow-hidden rounded-3xl border bg-white shadow-sm transition-all duration-200 ${
@@ -199,9 +207,9 @@ function EmailCard({ item }: { item: EmailWithAnalysis }) {
           </div>
         </div>
         <div className="flex items-center gap-3">
-          {risk && (
+          {risk && riskLabel && (
             <span className={`hidden rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-wider sm:block ${risk.pill}`}>
-              {risk.label}
+              {riskLabel}
             </span>
           )}
           {expanded ? <ChevronUp className="h-5 w-5 text-slate-400" /> : <ChevronDown className="h-5 w-5 text-slate-400" />}
@@ -214,7 +222,7 @@ function EmailCard({ item }: { item: EmailWithAnalysis }) {
             <div className="grid gap-6 lg:grid-cols-2">
               <div className="space-y-4">
                 <div>
-                  <h4 className="text-xs font-black uppercase tracking-widest text-slate-400">AI Analysis</h4>
+                  <h4 className="text-xs font-black uppercase tracking-widest text-slate-400">{t("ai_analysis_label")}</h4>
                   <p className="mt-2 text-sm leading-7 text-slate-700 font-medium">
                     {analysis.explanation}
                   </p>
@@ -228,7 +236,7 @@ function EmailCard({ item }: { item: EmailWithAnalysis }) {
                 </div>
               </div>
               <div className="space-y-4">
-                <h4 className="text-xs font-black uppercase tracking-widest text-slate-400">Recommended Steps</h4>
+                <h4 className="text-xs font-black uppercase tracking-widest text-slate-400">{t("recommended_steps")}</h4>
                 <div className="grid gap-2">
                   {analysis.actions.map((action, idx) => (
                     <div key={idx} className="flex items-center gap-3 rounded-2xl bg-white p-3 shadow-sm border border-slate-100">
@@ -242,11 +250,11 @@ function EmailCard({ item }: { item: EmailWithAnalysis }) {
           ) : (
             <div className="flex items-center justify-center py-8">
               <Loader2 className="h-6 w-6 animate-spin text-sky-500" />
-              <span className="ml-3 text-sm font-bold text-slate-500">Processing analysis...</span>
+              <span className="ml-3 text-sm font-bold text-slate-500">{t("processing_analysis")}</span>
             </div>
           )}
           <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-4">
-            <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Original Message</h4>
+            <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400">{t("original_message")}</h4>
             <div className="mt-2 max-h-40 overflow-y-auto text-sm text-slate-600 leading-6 whitespace-pre-wrap font-medium">
               {item.body}
             </div>
@@ -269,6 +277,7 @@ type RiskFilter = "all" | RiskLevel
 
 export default function DashboardContent() {
   const router = useRouter()
+  const { t } = useT()
   const [user, setUser] = useState<User | null>(null)
   const [emails, setEmails] = useState<EmailWithAnalysis[]>([])
   const [stats, setStats] = useState<Stats>({ total: 0, fraud: 0, suspicious: 0, alertsSent: 0, languages: [] })
@@ -363,23 +372,26 @@ export default function DashboardContent() {
     <main className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
       <header className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">Protection Dashboard</h1>
-          <p className="mt-2 text-sm font-bold text-slate-500">Secure protection active for {user?.email}</p>
+          <h1 className="text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">{t("protection_dashboard")}</h1>
+          <p className="mt-2 text-sm font-bold text-slate-500">{t("active_for")} {user?.email}</p>
         </div>
-        
+
         <div className="flex flex-wrap gap-3">
           <div className="rounded-3xl border border-sky-100 bg-white p-1 shadow-sm flex items-center">
-            {(["all", "scam", "suspicious"] as const).map((f) => (
-              <button
-                key={f}
-                onClick={() => setFilter(f)}
-                className={`rounded-full px-4 py-2 text-xs font-black uppercase tracking-wider transition ${
-                  filter === f ? "bg-slate-950 text-white shadow-md" : "text-slate-500 hover:text-slate-950"
-                }`}
-              >
-                {f === "all" ? "All Inbox" : f}
-              </button>
-            ))}
+            {(["all", "scam", "suspicious"] as const).map((f) => {
+              const filterLabel = f === "all" ? t("filter_all") : f === "scam" ? t("filter_scam") : t("filter_suspicious")
+              return (
+                <button
+                  key={f}
+                  onClick={() => setFilter(f)}
+                  className={`rounded-full px-4 py-2 text-xs font-black uppercase tracking-wider transition ${
+                    filter === f ? "bg-slate-950 text-white shadow-md" : "text-slate-500 hover:text-slate-950"
+                  }`}
+                >
+                  {filterLabel}
+                </button>
+              )
+            })}
           </div>
         </div>
       </header>
@@ -389,8 +401,8 @@ export default function DashboardContent() {
         <div className="soft-card rounded-[32px] p-6 border border-slate-100 bg-white shadow-sm">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <h2 className="text-xl font-black text-slate-950">Quick Check</h2>
-              <p className="mt-1 text-sm font-bold text-slate-500">Paste any suspicious text, email, or DM here.</p>
+              <h2 className="text-xl font-black text-slate-950">{t("quick_check")}</h2>
+              <p className="mt-1 text-sm font-bold text-slate-500">{t("quick_check_desc")}</p>
             </div>
             <div className="rounded-2xl bg-sky-50 p-3 text-sky-500 shadow-inner">
               <Search className="h-5 w-5" />
@@ -400,7 +412,7 @@ export default function DashboardContent() {
             value={message}
             onChange={(event) => setMessage(event.target.value)}
             rows={5}
-            placeholder="Paste a suspicious message here..."
+            placeholder={t("paste_placeholder")}
             className="mt-6 w-full resize-none rounded-[26px] border border-slate-200 bg-slate-50/50 p-5 text-sm leading-7 text-slate-800 shadow-inner outline-none transition placeholder:text-slate-400 focus:border-sky-300 focus:bg-white font-medium"
           />
           <button
@@ -410,7 +422,7 @@ export default function DashboardContent() {
             className="mt-6 flex w-full items-center justify-center gap-3 rounded-[22px] bg-sky-500 px-6 py-4 text-sm font-black text-white shadow-xl shadow-sky-100 transition hover:-translate-y-0.5 hover:bg-sky-600 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
           >
             {analyzing ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
-            {analyzing ? "AI is Analyzing..." : "Run AI Analysis"}
+            {analyzing ? t("analyzing") : t("run_analysis")}
           </button>
         </div>
 
@@ -427,10 +439,10 @@ export default function DashboardContent() {
       {/* Stats Bar */}
       <div className="mt-8 grid gap-4 grid-cols-2 lg:grid-cols-4">
         {[
-          { label: "Total Scanned", value: stats.total, icon: Inbox, color: "text-slate-600 bg-slate-50" },
-          { label: "Scams Caught", value: stats.fraud, icon: AlertTriangle, color: "text-rose-600 bg-rose-50" },
-          { label: "Alerts Sent", value: stats.alertsSent, icon: Bell, color: "text-sky-600 bg-sky-50" },
-          { label: "Languages", value: stats.languages.length, icon: Activity, color: "text-emerald-600 bg-emerald-50" },
+          { label: t("total_scanned"), value: stats.total, icon: Inbox, color: "text-slate-600 bg-slate-50" },
+          { label: t("scams_caught"), value: stats.fraud, icon: AlertTriangle, color: "text-rose-600 bg-rose-50" },
+          { label: t("alerts_sent"), value: stats.alertsSent, icon: Bell, color: "text-sky-600 bg-sky-50" },
+          { label: t("languages"), value: stats.languages.length, icon: Activity, color: "text-emerald-600 bg-emerald-50" },
         ].map((stat) => (
           <div key={stat.label} className="soft-card rounded-3xl p-5 border border-slate-100 bg-white">
             <div className="flex items-center justify-between">
@@ -449,11 +461,11 @@ export default function DashboardContent() {
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-xl font-black text-slate-950 flex items-center gap-3">
             <div className="bg-sky-500 h-6 w-1.5 rounded-full" />
-            Security Feed
+            {t("security_feed")}
           </h2>
           <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-wider text-slate-400">
             <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-            Live Monitoring
+            {t("live_monitoring")}
           </div>
         </div>
 
@@ -465,9 +477,9 @@ export default function DashboardContent() {
               <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-[32px] bg-slate-50 text-slate-300 shadow-inner">
                 <Inbox className="h-10 w-10" />
               </div>
-              <h3 className="mt-8 text-xl font-black text-slate-950 tracking-tight">Your security feed is empty</h3>
+              <h3 className="mt-8 text-xl font-black text-slate-950 tracking-tight">{t("feed_empty")}</h3>
               <p className="mt-3 text-sm font-bold text-slate-500 max-w-sm mx-auto leading-7">
-                Once you forward a suspicious email, our AI will analyze it and post the detailed risk report here.
+                {t("feed_empty_desc")}
               </p>
             </div>
           )}
