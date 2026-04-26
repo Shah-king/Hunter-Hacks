@@ -2,6 +2,7 @@ import type { Metadata } from "next"
 import Link from "next/link"
 import AuthButton from "./components/DemoAuthButton"
 import NavLinks from "./components/NavLinks"
+import LanguageSelect from "./components/LanguageSelect"
 import "./globals.css"
 
 export const metadata: Metadata = {
@@ -31,17 +32,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <NavLinks />
 
             <div className="flex items-center gap-2">
-              <select
-                aria-label="Language"
-                className="rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 shadow-sm outline-none transition hover:border-sky-200 focus:border-sky-300"
-                defaultValue="en"
-              >
-                <option value="en">EN</option>
-                <option value="es">ES</option>
-                <option value="zh">中文</option>
-                <option value="bn">বাংলা</option>
-                <option value="ht">Kreyol</option>
-              </select>
+              <LanguageSelect />
               <AuthButton />
             </div>
           </div>
