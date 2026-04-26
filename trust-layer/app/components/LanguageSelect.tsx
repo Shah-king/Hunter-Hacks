@@ -1,16 +1,16 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { Check } from "lucide-react"
+import { useState, useEffect, useRef } from "react"
+import { Globe, Check, ChevronDown } from "lucide-react"
 
 const LANGUAGES = [
-  { value: "en", short: "EN", label: "🇺🇸 English" },
-  { value: "zh", short: "中文", label: "🇨🇳 中文" },
-  { value: "es", short: "ES", label: "🇪🇸 Español" },
-  { value: "fr", short: "FR", label: "🇫🇷 Français" },
-  { value: "ko", short: "한국어", label: "🇰🇷 한국어" },
-  { value: "bn", short: "বাংলা", label: "🇧🇩 বাংলা" },
-  { value: "ht", short: "Kreyòl", label: "🇭🇹 Kreyòl" },
+  { value: "en", label: "English", flag: "🇺🇸" },
+  { value: "zh", label: "中文", flag: "🇨🇳" },
+  { value: "es", label: "Español", flag: "🇪🇸" },
+  { value: "fr", label: "Français", flag: "🇫🇷" },
+  { value: "ko", label: "한국어", flag: "🇰🇷" },
+  { value: "bn", label: "বাংলা", flag: "🇧🇩" },
+  { value: "ht", label: "Kreyòl", flag: "🇭🇹" },
 ]
 
 export const LANGUAGE_NAMES: Record<string, string> = {
@@ -31,64 +31,62 @@ export function getStoredLanguage(): string {
 export default function LanguageSelect() {
   const [lang, setLang] = useState("en")
   const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     const stored = getStoredLanguage()
-    if (stored !== "en") {
-      setTimeout(() => setLang(stored), 0)
-    }
+    if (stored !== "en") setLang(stored)
   }, [])
 
-  function handleChange(value: string) {
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false)
+      }
+    }
+    document.addEventListener("mousedown", handleClick)
+    return () => document.removeEventListener("mousedown", handleClick)
+  }, [])
+
+  function handleSelect(value: string) {
     setLang(value)
     setOpen(false)
     localStorage.setItem("tl-language", value)
     window.dispatchEvent(new CustomEvent("tl-language-change", { detail: value }))
   }
 
-  const currentLanguage = LANGUAGES.find((l) => l.value === lang) ?? LANGUAGES[0]
+  const current = LANGUAGES.find((l) => l.value === lang) ?? LANGUAGES[0]
 
   return (
-    <div className="relative">
+    <div ref={ref} className="relative">
       <button
         type="button"
-        aria-label="Select language"
-        aria-expanded={open}
-        onClick={() => setOpen((current) => !current)}
-        className="rounded-full bg-white px-3 py-2 text-xs font-bold text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-50 active:scale-95"
+        onClick={() => setOpen((o) => !o)}
+        className="flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 shadow-sm transition hover:border-sky-200 hover:text-slate-950"
       >
-        🌐 {currentLanguage.short}
+        <Globe className="h-3.5 w-3.5 text-slate-400" />
+        <span>{current.label}</span>
+        <ChevronDown className={`h-3 w-3 text-slate-400 transition-transform ${open ? "rotate-180" : ""}`} />
       </button>
 
-      {open ? (
-        <>
-          <button
-            type="button"
-            aria-label="Close language selector"
-            className="fixed inset-0 z-40 cursor-default bg-transparent"
-            onClick={() => setOpen(false)}
-          />
-          <div className="absolute right-0 top-12 z-50 w-[260px] rounded-2xl bg-white p-3 shadow-[0_10px_30px_rgba(0,0,0,0.08)]">
-            {LANGUAGES.map((language) => {
-              const selected = language.value === lang
-
-              return (
-                <button
-                  key={language.value}
-                  type="button"
-                  onClick={() => handleChange(language.value)}
-                  className={`flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-slate-700 transition hover:bg-slate-50 ${
-                    selected ? "bg-[linear-gradient(135deg,#fce7f3,#e0f2fe)]" : ""
-                  }`}
-                >
-                  <span className="min-w-0 flex-1">{language.label}</span>
-                  {selected ? <Check className="h-4 w-4 text-pink-500" /> : null}
-                </button>
-              )
-            })}
-          </div>
-        </>
-      ) : null}
+      {open && (
+        <div className="absolute right-0 top-full z-50 mt-2 w-44 overflow-hidden rounded-2xl border border-slate-200 bg-white py-1 shadow-lg">
+          {LANGUAGES.map((l) => (
+            <button
+              key={l.value}
+              type="button"
+              onClick={() => handleSelect(l.value)}
+              className={`flex w-full items-center gap-3 px-4 py-3 text-sm font-medium transition hover:bg-slate-50 ${
+                lang === l.value ? "bg-slate-50 text-sky-600" : "text-slate-700"
+              }`}
+            >
+              <span className="text-base">{l.flag}</span>
+              <span className="flex-1 text-left">{l.label}</span>
+              {lang === l.value && <Check className="h-4 w-4 text-sky-500" />}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

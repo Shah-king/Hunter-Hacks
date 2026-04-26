@@ -16,9 +16,41 @@ import {
   Search,
   Copy,
 } from "lucide-react"
-import type { EmailWithAnalysis, User, AnalysisResult, RiskLevel } from "@/lib/types"
+import type { EmailWithAnalysis, User, AnalysisResult, RiskLevel, BreakdownItem } from "@/lib/types"
+import { useLanguage } from "@/lib/i18n"
 import { getStoredLanguage } from "@/app/components/LanguageSelect"
-import { useT } from "@/app/components/useT"
+
+function BreakdownBars({ breakdown }: { breakdown: BreakdownItem[] }) {
+  if (!breakdown?.length) return null
+  return (
+    <div className="space-y-3">
+      <h4 className="text-xs font-black uppercase tracking-widest text-slate-400">Confidence Breakdown</h4>
+      {breakdown.map((item) => {
+        const color =
+          item.score >= 70 ? "bg-rose-400" : item.score >= 40 ? "bg-amber-400" : "bg-emerald-400"
+        return (
+          <div key={item.label} className="group">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-xs font-bold text-slate-600">{item.label}</span>
+              <span className="text-xs font-black text-slate-500">{item.score}%</span>
+            </div>
+            <div className="h-2 w-full rounded-full bg-slate-100 overflow-hidden">
+              <div
+                className={`h-full rounded-full transition-all duration-700 ${color}`}
+                style={{ width: `${item.score}%` }}
+              />
+            </div>
+            {item.reason && (
+              <p className="mt-1 text-[11px] text-slate-400 font-medium leading-relaxed">{item.reason}</p>
+            )}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+function useT() { return useLanguage() }
 
 const SAMPLE_MESSAGE =
   "Final notice: your tax case will be sent to federal court unless you pay today with gift cards."
@@ -137,9 +169,15 @@ function ScamAlertCard({ message, analysis }: { message: string; analysis: Analy
         </div>
       </div>
 
+      {analysis.breakdown?.length > 0 && (
+        <div className="mt-6 rounded-3xl bg-slate-50 p-5 border border-slate-100">
+          <BreakdownBars breakdown={analysis.breakdown} />
+        </div>
+      )}
+
       <div className="mt-6 rounded-3xl bg-slate-50 p-4 border border-slate-100">
-        <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">{t("checked_message")}</p>
-        <p className="mt-2 text-sm leading-7 text-slate-700 font-medium italic">&quot;{message || SAMPLE_MESSAGE}&quot;</p>
+        <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">Checked message</p>
+        <p className="mt-2 text-sm leading-7 text-slate-700 font-medium italic">“{message || SAMPLE_MESSAGE}”</p>
       </div>
 
       <div className="mt-6 grid gap-3 sm:grid-cols-2">
@@ -246,7 +284,7 @@ function EmailCard({ item }: { item: EmailWithAnalysis }) {
             <div className="grid gap-6 lg:grid-cols-2">
               <div className="space-y-4">
                 <div>
-                  <h4 className="text-xs font-black uppercase tracking-widest text-slate-400">{t("ai_analysis_label")}</h4>
+                  <h4 className="text-xs font-black uppercase tracking-widest text-slate-400">AI Analysis</h4>
                   <p className="mt-2 text-sm leading-7 text-slate-700 font-medium">
                     {analysis.explanation}
                   </p>
@@ -260,7 +298,7 @@ function EmailCard({ item }: { item: EmailWithAnalysis }) {
                 </div>
               </div>
               <div className="space-y-4">
-                <h4 className="text-xs font-black uppercase tracking-widest text-slate-400">{t("recommended_steps")}</h4>
+                <h4 className="text-xs font-black uppercase tracking-widest text-slate-400">Recommended Steps</h4>
                 <div className="grid gap-2">
                   {analysis.actions.map((action, idx) => (
                     <div key={idx} className="flex items-center gap-3 rounded-2xl bg-white p-3 shadow-sm border border-slate-100">

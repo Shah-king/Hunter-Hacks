@@ -567,3 +567,31 @@ export const translations = {
 
 export type LangCode = keyof typeof translations
 export type TranslationKey = keyof typeof translations.en
+
+// ---- client-side hook ----
+// Kept in a separate import block so Next.js tree-shaking strips it from server bundles.
+import { useState, useEffect } from "react"
+import { getStoredLanguage } from "@/app/components/LanguageSelect"
+
+export function useLanguage() {
+  const [lang, setLang] = useState<LangCode>("en")
+
+  useEffect(() => {
+    const stored = getStoredLanguage()
+    if (stored in translations) setLang(stored as LangCode)
+
+    function onLangChange(e: Event) {
+      const detail = (e as CustomEvent<string>).detail
+      if (detail in translations) setLang(detail as LangCode)
+    }
+    window.addEventListener("tl-language-change", onLangChange)
+    return () => window.removeEventListener("tl-language-change", onLangChange)
+  }, [])
+
+  function t(key: TranslationKey): string {
+    const dict = translations[lang] as Record<string, string>
+    return dict[key] ?? (translations.en as Record<string, string>)[key] ?? key
+  }
+
+  return { lang, t }
+}

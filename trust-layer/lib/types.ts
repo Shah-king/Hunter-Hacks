@@ -8,11 +8,18 @@ export type LanguageDetectionResult = {
   english_text: string
 }
 
+export type BreakdownItem = {
+  label: string
+  score: number
+  reason: string
+}
+
 export type AIScoringResult = {
   fraud_score: number
   scam_type: string
   red_flags: string[]
   reasoning: string
+  breakdown: BreakdownItem[]
 }
 
 export type User = {
@@ -44,6 +51,7 @@ export type AnalysisResult = {
   risk_level: RiskLevel
   scam_type: string
   red_flags: string[]
+  breakdown: BreakdownItem[]
   explanation: string
   actions: string[]
   alert_sent: boolean

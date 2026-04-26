@@ -9,11 +9,11 @@ import {
   ArrowRight,
   MessageSquareWarning,
 } from "lucide-react"
-import { useT } from "@/app/components/useT"
+import { useLanguage } from "@/lib/i18n"
 
 export default function LandingContent() {
   const router = useRouter()
-  const { t } = useT()
+  const { t } = useLanguage()
 
   const communityComments = [
     { text: "我妈差点信了这个 😭", className: "ml-auto" },

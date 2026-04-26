@@ -102,6 +102,7 @@ export async function runPipeline(params: {
     risk_level: riskLevel,
     scam_type: aiResult.scam_type === "none" ? "No scam detected" : aiResult.scam_type,
     red_flags: [...ruleHits, ...aiResult.red_flags].slice(0, 6),
+    breakdown: aiResult.breakdown,
     explanation,
     actions,
     alert_sent: alertSent,
