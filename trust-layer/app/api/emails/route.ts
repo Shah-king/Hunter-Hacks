@@ -26,7 +26,11 @@ export async function GET() {
     user = allUsers[0] ?? null
   }
 
-  const emails = await store.getAllEmailsWithAnalysis()
-  const stats = await store.getStats()
+  if (!user) {
+    return NextResponse.json({ emails: [], stats: { total: 0, fraud: 0, suspicious: 0, alertsSent: 0, languages: [] }, user: null })
+  }
+
+  const emails = await store.getAllEmailsWithAnalysis(user.id)
+  const stats = await store.getStats(user.id)
   return NextResponse.json({ emails, stats, user })
 }

@@ -124,14 +124,19 @@ export const store = {
   },
 
   // Combined: all emails with their analysis, newest first
-  async getAllEmailsWithAnalysis(): Promise<EmailWithAnalysis[]> {
+  async getAllEmailsWithAnalysis(userId: string): Promise<EmailWithAnalysis[]> {
     if (isSupabaseConfigured) {
       const supabase = createAdminClient()
-      const { data: emailsData } = await supabase
+      const { data: emailsData, error: emailError } = await supabase
         .from("emails")
         .select("*")
+        .eq("user_id", userId)
         .order("received_at", { ascending: false })
       
+      if (emailError) {
+        console.error(`[store] Error fetching isolated emails for ${userId}:`, emailError.message)
+      }
+
       const { data: resultsData } = await supabase
         .from("analysis_results")
         .select("*")
@@ -143,6 +148,7 @@ export const store = {
     }
 
     return [...memoryEmails]
+      .filter((e) => e.user_id === userId)
       .sort((a, b) => new Date(b.received_at).getTime() - new Date(a.received_at).getTime())
       .map((email) => ({
         ...email,
@@ -150,7 +156,7 @@ export const store = {
       }))
   },
 
-  async getStats() {
+  async getStats(userId: string) {
     let emailsCount = 0
     let fraudCount = 0
     let suspiciousCount = 0
@@ -159,22 +165,45 @@ export const store = {
 
     if (isSupabaseConfigured) {
       const supabase = createAdminClient()
-      const { count } = await supabase.from("emails").select("*", { count: "exact", head: true })
+      
+      // Isolated count
+      const { count, error: countError } = await supabase
+        .from("emails")
+        .select("*", { count: "exact", head: true })
+        .eq("user_id", userId)
+      
+      if (countError) console.error(`[store] Stats count error:`, countError.message)
       emailsCount = count || 0
 
-      const { data: results } = await supabase.from("analysis_results").select("risk_level, alert_sent")
+      // Isolated analysis stats
+      // We join analysis_results with emails to ensure we only count results belonging to the user
+      const { data: results, error: resultsError } = await supabase
+        .from("analysis_results")
+        .select("risk_level, alert_sent, emails!inner(user_id)")
+        .eq("emails.user_id", userId)
+      
+      if (resultsError) console.error(`[store] Stats results error:`, resultsError.message)
+      
       fraudCount = results?.filter((r) => r.risk_level === "scam").length || 0
       suspiciousCount = results?.filter((r) => r.risk_level === "suspicious").length || 0
       alertsSentCount = results?.filter((r) => r.alert_sent).length || 0
 
-      const { data: langs } = await supabase.from("emails").select("language_name")
+      const { data: langs } = await supabase
+        .from("emails")
+        .select("language_name")
+        .eq("user_id", userId)
+      
       languages = [...new Set((langs || []).map((l) => l.language_name).filter(Boolean))]
     } else {
-      emailsCount = memoryEmails.length
-      fraudCount = memoryResults.filter((r) => r.risk_level === "scam").length
-      suspiciousCount = memoryResults.filter((r) => r.risk_level === "suspicious").length
-      alertsSentCount = memoryResults.filter((r) => r.alert_sent).length
-      languages = [...new Set(memoryEmails.map((e) => e.language_name).filter(Boolean))]
+      const userEmails = memoryEmails.filter((e) => e.user_id === userId)
+      const userEmailIds = new Set(userEmails.map((e) => e.id))
+      const userResults = memoryResults.filter((r) => userEmailIds.has(r.email_id))
+
+      emailsCount = userEmails.length
+      fraudCount = userResults.filter((r) => r.risk_level === "scam").length
+      suspiciousCount = userResults.filter((r) => r.risk_level === "suspicious").length
+      alertsSentCount = userResults.filter((r) => r.alert_sent).length
+      languages = [...new Set(userEmails.map((e) => e.language_name).filter(Boolean))]
     }
 
     return { total: emailsCount, fraud: fraudCount, suspicious: suspiciousCount, alertsSent: alertsSentCount, languages }
