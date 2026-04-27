@@ -16,10 +16,24 @@ export default function AuthButton() {
   useEffect(() => {
     let mounted = true
     async function getInitialUser() {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (mounted) {
-        setUser(user)
-        setLoading(false)
+      try {
+        const { data: { user }, error } = await supabase.auth.getUser()
+        if (error) {
+          if (error.code === "refresh_token_not_found") {
+            await supabase.auth.signOut()
+          }
+          return
+        }
+        if (mounted) {
+          setUser(user)
+        }
+      } catch (err) {
+        console.error("Supabase auth getUser failed", err)
+        await supabase.auth.signOut()
+      } finally {
+        if (mounted) {
+          setLoading(false)
+        }
       }
     }
     void getInitialUser()

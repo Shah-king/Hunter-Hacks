@@ -65,10 +65,12 @@ export async function POST(req: NextRequest) {
     let authUser: { id: string; email?: string } | null = null
     try {
       const supabase = await createClient()
-      const { data } = await supabase.auth.getUser()
-      authUser = data.user
-    } catch {
-      // Supabase env vars not set — proceed with demo user
+      const { data, error } = await supabase.auth.getUser()
+      if (!error) {
+        authUser = data.user
+      }
+    } catch (err) {
+      console.warn("Supabase auth getUser failed in simulate route", err)
     }
 
     const body = await req.json()

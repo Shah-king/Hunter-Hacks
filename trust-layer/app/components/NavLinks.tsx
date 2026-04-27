@@ -15,10 +15,22 @@ export default function NavLinks() {
 
   useEffect(() => {
     async function checkAuth() {
-      const { data: { user } } = await supabase.auth.getUser()
-      setIsLoggedIn(!!user)
+      try {
+        const { data: { user }, error } = await supabase.auth.getUser()
+        if (error) {
+          if (error.code === "refresh_token_not_found") {
+            await supabase.auth.signOut()
+          }
+          setIsLoggedIn(false)
+          return
+        }
+        setIsLoggedIn(!!user)
+      } catch (err) {
+        console.error("Supabase auth getUser failed", err)
+        setIsLoggedIn(false)
+      }
     }
-    checkAuth()
+    void checkAuth()
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event: AuthChangeEvent, session: Session | null) => {
       setIsLoggedIn(!!session?.user)
