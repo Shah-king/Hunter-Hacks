@@ -568,18 +568,22 @@ export const translations = {
 export type LangCode = keyof typeof translations
 export type TranslationKey = keyof typeof translations.en
 
+export function getStoredLanguage(): string {
+  if (typeof window === "undefined") return "en"
+  return localStorage.getItem("tl-language") ?? "en"
+}
+
 // ---- client-side hook ----
 // Kept in a separate import block so Next.js tree-shaking strips it from server bundles.
 import { useState, useEffect } from "react"
-import { getStoredLanguage } from "@/app/components/LanguageSelect"
 
 export function useLanguage() {
-  const [lang, setLang] = useState<LangCode>(() => {
-    const stored = getStoredLanguage()
-    return stored in translations ? (stored as LangCode) : "en"
-  })
+  const [lang, setLang] = useState<LangCode>("en")
 
   useEffect(() => {
+    const stored = getStoredLanguage()
+    if (stored in translations) setLang(stored as LangCode)
+
     function onLangChange(e: Event) {
       const detail = (e as CustomEvent<string>).detail
       if (detail in translations) setLang(detail as LangCode)

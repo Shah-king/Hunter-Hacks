@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react"
 import { Globe, Check, ChevronDown } from "lucide-react"
+import { getStoredLanguage } from "@/lib/i18n"
 
 const LANGUAGES = [
   { value: "en", label: "English", flag: "🇺🇸" },
@@ -23,15 +24,15 @@ export const LANGUAGE_NAMES: Record<string, string> = {
   ht: "Haitian Creole",
 }
 
-export function getStoredLanguage(): string {
-  if (typeof window === "undefined") return "en"
-  return localStorage.getItem("tl-language") ?? "en"
-}
-
 export default function LanguageSelect() {
-  const [lang, setLang] = useState(() => getStoredLanguage())
+  const [lang, setLang] = useState("en")
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const stored = getStoredLanguage()
+    if (stored) setLang(stored)
+  }, [])
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
