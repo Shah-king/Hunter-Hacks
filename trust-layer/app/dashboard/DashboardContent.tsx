@@ -17,8 +17,7 @@ import {
   Copy,
 } from "lucide-react"
 import type { EmailWithAnalysis, User, AnalysisResult, RiskLevel, BreakdownItem } from "@/lib/types"
-import { useLanguage } from "@/lib/i18n"
-import { getStoredLanguage } from "@/app/components/LanguageSelect"
+import { useLanguage, getStoredLanguage } from "@/lib/i18n"
 
 function BreakdownBars({ breakdown }: { breakdown: BreakdownItem[] }) {
   if (!breakdown?.length) return null
