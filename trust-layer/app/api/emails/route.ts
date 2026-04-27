@@ -6,7 +6,16 @@ export const dynamic = 'force-dynamic'
 
 export async function GET() {
   const supabase = await createClient()
-  const { data: { user: authUser } } = await supabase.auth.getUser()
+  let authUser = null
+
+  try {
+    const { data: { user }, error } = await supabase.auth.getUser()
+    if (!error) {
+      authUser = user
+    }
+  } catch (err) {
+    console.warn("Supabase auth getUser failed in email route", err)
+  }
 
   let user = null
   if (authUser) {
